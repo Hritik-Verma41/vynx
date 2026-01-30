@@ -1,10 +1,17 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:vynx/services/auth_service.dart';
 
 import './routes/app_pages.dart';
 import './routes/app_routes.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  Get.put(AuthService(), permanent: true);
+
   runApp(const MyApp());
 }
 

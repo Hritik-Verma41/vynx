@@ -12,6 +12,8 @@
 .swiftpm/
 .vscode/
 migrate_working_dir/
+android/build/
+ios/build/
 
 # IntelliJ related
 *.iml
