@@ -39,6 +39,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -94,3 +95,17 @@ flutter_launcher_icons:
   ios: true
   image_path: "assets/icon/vynx-app-icon.png"
   min_sdk_android: 21
+
+flutter_native_splash:
+  # Light Mode (Default)
+  color: "#FFFFFF"
+  image: "assets/splash/vynx-light-mode-splash-icon.png"
+  
+  # Dark Mode (Automatic switch)
+  color_dark: "#1A0B2E"
+  image_dark: "assets/splash/vynx-dark-mode-splash-icon.png"
+
+  android_12:
+    image: "assets/splash/vynx-app-splash-android-12.png"
+    color: "#FFFFFF"
+    color_dark: "#1A0B2E"
