@@ -1,4 +1,4 @@
-package com.example.vynx
+package com.hritik.vynx
 
 import io.flutter.embedding.android.FlutterActivity
 

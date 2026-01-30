@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "140829766786",
+    "project_id": "vynx-app",
+    "storage_bucket": "vynx-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:140829766786:android:7c72d7668bd6778508309b",
+        "android_client_info": {
+          "package_name": "com.hritik.vynx"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "140829766786-o8ahlhr56tppqbng2bks8k12r3nnv664.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.hritik.vynx",
+            "certificate_hash": "ad2ee1ae688048fe57b6e0b5271d438f29bae3a9"
+          }
+        },
+        {
+          "client_id": "140829766786-vplvlhepb7lr7b0gc59qto0ok5m9gh0d.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDmusaGVD_PGh8xI6t1Y4wjPoYwSU6VMzU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "140829766786-vplvlhepb7lr7b0gc59qto0ok5m9gh0d.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "140829766786-gabfg0ert2u8ka8isq2gnbdh7ula5e6o.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.hritik.vynx"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
