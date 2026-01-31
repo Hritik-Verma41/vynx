@@ -157,7 +157,7 @@ class SetupOnSignupPage extends StatelessWidget {
                                 return _buildActionButton(
                                   label: "Finish & Create Account",
                                   onPressed: ctrl.isSubmitEnabled
-                                      ? () => ctrl.finalizeRegistration()
+                                      ? () => ctrl.startPhoneVerification()
                                       : null,
                                 );
                               },

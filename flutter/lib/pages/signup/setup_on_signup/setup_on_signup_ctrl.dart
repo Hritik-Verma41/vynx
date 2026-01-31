@@ -5,16 +5,21 @@ import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:vynx/routes/app_routes.dart';
+import 'package:vynx/pages/signup/otp/otp_ctrl.dart'; // Ensure this path is correct
 
 class SetupOnSignupCtrl extends GetxController {
   final data = Get.arguments;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Text Controllers
   final firstNameController = TextEditingController();
   final lastNameController = TextEditingController();
   final phoneController = TextEditingController();
   final nameFocusNode = FocusNode();
 
+  // Observables
   var selectedImagePath = "".obs;
   var socialImageUrl = "".obs;
   var isLoading = false.obs;
@@ -26,33 +31,15 @@ class SetupOnSignupCtrl extends GetxController {
   var isPhoneValid = false.obs;
   var completePhoneNumber = "".obs;
   var phoneLength = 0.obs;
-
   var hasInteractedWithName = false.obs;
 
-  // LOGIC: Hide counter if empty OR if validation passes for the specific country
-  String? get phoneCounterText {
-    if (phoneLength.value == 0 || isPhoneValid.value) {
-      return "";
-    }
-    return null; // Shows default "n/max" when invalid
-  }
-
-  bool get isNameValid => firstNameController.text.trim().isNotEmpty;
-  bool get isSubmitEnabled => isNameValid && isPhoneValid.value;
+  String _verificationId = "";
+  String get verificationIdValue => _verificationId;
 
   @override
   void onInit() {
     firstNameController.text = data?['firstName'] ?? "";
     lastNameController.text = data?['lastName'] ?? "";
-    phoneController.text = data?['phoneNumber'] ?? "";
-
-    firstNameController.addListener(() {
-      if (firstNameController.text.isNotEmpty || hasInteractedWithName.value) {
-        hasInteractedWithName.value = true;
-      }
-      update();
-    });
-
     _initializeImage();
     super.onInit();
   }
@@ -114,57 +101,82 @@ class SetupOnSignupCtrl extends GetxController {
     if (socialImageUrl.value.isNotEmpty) {
       return NetworkImage(socialImageUrl.value);
     }
-    if (selectedDefaultImage.value.isNotEmpty) {
-      return AssetImage('assets/images/${selectedDefaultImage.value}');
-    }
-    return const AssetImage('assets/images/default-profile-male-1.png');
+    String assetPath = selectedDefaultImage.value.isEmpty
+        ? 'default-profile-male-1.png'
+        : selectedDefaultImage.value;
+    return AssetImage('assets/images/$assetPath');
   }
 
-  Future<void> finalizeRegistration() async {
+  String? get phoneCounterText =>
+      (phoneLength.value == 0 || isPhoneValid.value) ? "" : null;
+  bool get isNameValid => firstNameController.text.trim().isNotEmpty;
+  bool get isSubmitEnabled => isNameValid && isPhoneValid.value;
+
+  Future<void> startPhoneVerification() async {
     if (!isSubmitEnabled) {
       hasInteractedWithName.value = true;
       update();
       return;
     }
+
     isLoading.value = true;
     try {
-      String profileImageData = "";
-      if (selectedImagePath.value.isNotEmpty) {
-        profileImageData = base64Encode(
-          await File(selectedImagePath.value).readAsBytes(),
-        );
-      } else if (socialImageUrl.value.isNotEmpty) {
-        profileImageData = socialImageUrl.value;
-      } else if (selectedDefaultImage.value.isNotEmpty) {
-        ByteData bytes = await rootBundle.load(
-          'assets/images/${selectedDefaultImage.value}',
-        );
-        profileImageData = base64Encode(bytes.buffer.asUint8List());
-      }
-
-      final dio = Dio(BaseOptions(baseUrl: 'http://YOUR_API_IP:3000'));
-      final response = await dio.post(
-        '/auth/register-or-link',
-        data: {
-          'firstName': firstNameController.text.trim(),
-          'lastName': lastNameController.text.trim(),
-          'email': data?['email'],
-          'phoneNumber': completePhoneNumber.value,
-          'profileImage': profileImageData,
-          'password': data?['password'],
-          'provider': data?['authProvider'],
-          'gender': selectedGender.value,
+      await _auth.verifyPhoneNumber(
+        phoneNumber: completePhoneNumber.value,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          // Auto-verification on Android
+          if (Get.isRegistered<OtpCtrl>()) {
+            Get.find<OtpCtrl>().completeWithCredential(credential);
+          }
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          isLoading.value = false;
+          Get.snackbar("Auth Error", e.message ?? "Verification Failed");
+        },
+        codeSent: (String verId, int? resendToken) {
+          _verificationId = verId;
+          isLoading.value = false;
+          Get.toNamed(Routes.otpPage);
+        },
+        codeAutoRetrievalTimeout: (String verId) {
+          _verificationId = verId;
         },
       );
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        Get.offAllNamed(Routes.chat);
-      }
     } catch (e) {
-      Get.snackbar("Error", "Account creation failed");
-    } finally {
       isLoading.value = false;
+      Get.snackbar("Error", "Failed to send SMS code");
     }
+  }
+
+  // Helper method for the final Backend API call
+  Future<void> callBackendApi(String firebaseUid) async {
+    String profileImageData = "";
+    if (selectedImagePath.value.isNotEmpty) {
+      profileImageData = base64Encode(
+        await File(selectedImagePath.value).readAsBytes(),
+      );
+    } else if (socialImageUrl.value.isNotEmpty) {
+      profileImageData = socialImageUrl.value;
+    } else {
+      ByteData bytes = await rootBundle.load(
+        'assets/images/${selectedDefaultImage.value}',
+      );
+      profileImageData = base64Encode(bytes.buffer.asUint8List());
+    }
+
+    final dio = Dio(BaseOptions(baseUrl: 'http://10.0.2.2:3000'));
+    await dio.post(
+      '/auth/register-or-link',
+      data: {
+        'firstName': firstNameController.text.trim(),
+        'lastName': lastNameController.text.trim(),
+        'email': data?['email'],
+        'phoneNumber': completePhoneNumber.value,
+        'profileImage': profileImageData,
+        'gender': selectedGender.value,
+        'firebaseUid': firebaseUid,
+      },
+    );
   }
 
   @override
