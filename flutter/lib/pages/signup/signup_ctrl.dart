@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:vynx/routes/app_routes.dart';
 import '../../services/auth_service.dart';
 
 class SignupCtrl extends GetxController {
@@ -12,53 +13,82 @@ class SignupCtrl extends GetxController {
 
   var isLoading = false.obs;
 
+  void _proceedToSetup({
+    required String fullName,
+    required String email,
+    String? image,
+    String? gId,
+    String? fbId,
+    required String provider,
+    String? password,
+  }) {
+    List<String> parts = fullName.trim().split(' ');
+    String firstName = parts.isNotEmpty ? parts[0] : "";
+    String lastName = parts.length > 1 ? parts.sublist(1).join(' ') : "";
+
+    Get.toNamed(
+      Routes.setupOnSignUp,
+      arguments: {
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+        'profileImage': image,
+        'googleId': gId,
+        'facebookId': fbId,
+        'authProvider': provider,
+        'password': password,
+      },
+    );
+  }
+
   Future<void> signupWithGoogle() async {
     isLoading.value = true;
-    final userCredential = await _auth.signInWithGoogle();
-    isLoading.value = false;
-
-    if (userCredential != null) {
-      final user = userCredential.user;
-      debugPrint("==== GOOGLE SIGNUP DATA ====");
-      debugPrint("Name: ${user?.displayName}");
-      debugPrint("Email: ${user?.email}");
-      debugPrint("UID: ${user?.uid}");
-
-      _showDataSnackbar("Google Signup Data", user?.email ?? "No Email");
+    try {
+      final userCredential = await _auth.signInWithGoogle();
+      if (userCredential != null) {
+        final user = userCredential.user;
+        _proceedToSetup(
+          fullName: user?.displayName ?? "New User",
+          email: user?.email ?? "",
+          image: user?.photoURL,
+          gId: user?.uid,
+          provider: 'google',
+        );
+      }
+    } catch (e) {
+      Get.snackbar("Error", "Google Sign-Up failed");
+    } finally {
+      isLoading.value = false;
     }
   }
 
   Future<void> signupWithFacebook() async {
     isLoading.value = true;
-    final userCredential = await _auth.signInWithFacebook();
-    isLoading.value = false;
-
-    if (userCredential != null) {
-      final user = userCredential.user;
-      debugPrint("==== FACEBOOK SIGNUP DATA ====");
-      debugPrint("Name: ${user?.displayName}");
-      debugPrint("Email: ${user?.email}");
-      debugPrint("UID: ${user?.uid}");
-
-      _showDataSnackbar("Facebook Signup Data", user?.email ?? "No Email");
+    try {
+      final userCredential = await _auth.signInWithFacebook();
+      if (userCredential != null) {
+        final user = userCredential.user;
+        _proceedToSetup(
+          fullName: user?.displayName ?? "New User",
+          email: user?.email ?? "",
+          image: user?.photoURL,
+          fbId: user?.uid,
+          provider: 'facebook',
+        );
+      }
+    } catch (e) {
+      Get.snackbar("Error", "Facebook Sign-Up failed");
+    } finally {
+      isLoading.value = false;
     }
   }
 
   void signup() {
-    debugPrint("==== MANUAL SIGNUP DATA ====");
-    debugPrint("Name: ${nameController.text}");
-    debugPrint("Email: ${emailController.text}");
-    _showDataSnackbar("Local Signup", "Name: ${nameController.text}");
-  }
-
-  void _showDataSnackbar(String title, String message) {
-    Get.snackbar(
-      title,
-      "User: $message",
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.purple.withValues(alpha: 0.1),
-      colorText: Colors.purple,
-      duration: const Duration(seconds: 5),
+    _proceedToSetup(
+      fullName: nameController.text,
+      email: emailController.text,
+      password: passwordController.text,
+      provider: 'local',
     );
   }
 

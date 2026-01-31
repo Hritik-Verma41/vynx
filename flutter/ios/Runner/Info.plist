@@ -49,6 +49,12 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Vynx needs camera access to let you take a profile picture.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Vynx needs photos access to let you upload a profile picture.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Vynx needs microphone access (required by camera API).</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
