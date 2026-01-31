@@ -23,6 +23,15 @@ class _SignUpPageState extends State<SignUpPage> {
     controller.confirmPasswordController.addListener(() => setState(() {}));
   }
 
+  // New Name Error Getter
+  String? get _nameError {
+    if (controller.hasInteractedWithName.value &&
+        controller.nameController.text.trim().isEmpty) {
+      return "Full name is required";
+    }
+    return null;
+  }
+
   String? get _emailError {
     final text = controller.emailController.text;
     if (text.isEmpty) return null;
@@ -45,13 +54,14 @@ class _SignUpPageState extends State<SignUpPage> {
   String? get _confirmPasswordError {
     final text = controller.confirmPasswordController.text;
     if (text.isEmpty) return null;
-    if (text != controller.passwordController.text)
+    if (text != controller.passwordController.text) {
       return "Passwords do not match";
+    }
     return null;
   }
 
   bool get _isFormValid {
-    return controller.nameController.text.isNotEmpty &&
+    return controller.nameController.text.trim().isNotEmpty &&
         GetUtils.isEmail(controller.emailController.text) &&
         _passwordError == null &&
         controller.passwordController.text.isNotEmpty &&
@@ -68,201 +78,128 @@ class _SignUpPageState extends State<SignUpPage> {
       body: Obx(
         () => Stack(
           children: [
-            Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: isDark
-                      ? [const Color(0xFF1A0B2E), const Color(0xFF09040F)]
-                      : [const Color(0xFFF3E5F5), Colors.white],
-                ),
-              ),
-              child: SafeArea(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      physics: const ClampingScrollPhysics(),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: constraints.maxHeight,
-                        ),
-                        child: IntrinsicHeight(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 30),
-                            child: Column(
-                              children: [
-                                const Spacer(flex: 3),
-                                Image.asset(
-                                  isDark
-                                      ? 'assets/splash/vynx-dark-mode-splash-icon.png'
-                                      : 'assets/splash/vynx-light-mode-splash-icon.png',
-                                  height: 60,
-                                ),
-                                const SizedBox(height: 15),
-                                Text(
-                                  "Create Account",
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark ? Colors.white : Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  "Join the Vynx community today",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: isDark
-                                        ? Colors.white70
-                                        : Colors.black54,
-                                  ),
-                                ),
-                                const SizedBox(height: 25),
-                                _buildField(
-                                  hint: 'Full Name',
-                                  icon: Icons.person_outline,
-                                  isDark: isDark,
-                                  controller: controller.nameController,
-                                ),
-                                const SizedBox(height: 10),
-                                _buildField(
-                                  hint: 'Email',
-                                  icon: Icons.email_outlined,
-                                  isDark: isDark,
-                                  controller: controller.emailController,
-                                  errorText: _emailError,
-                                ),
-                                const SizedBox(height: 10),
-                                _buildField(
-                                  hint: 'Password',
-                                  icon: Icons.lock_outline,
-                                  isDark: isDark,
-                                  isPass: true,
-                                  controller: controller.passwordController,
-                                  errorText: _passwordError,
-                                ),
-                                const SizedBox(height: 10),
-                                _buildField(
-                                  hint: 'Confirm Password',
-                                  icon: Icons.lock_reset_outlined,
-                                  isDark: isDark,
-                                  isPass: true,
-                                  controller:
-                                      controller.confirmPasswordController,
-                                  errorText: _confirmPasswordError,
-                                ),
-                                const SizedBox(height: 20),
-                                _buildActionButton(
-                                  label: "Sign Up",
-                                  onPressed: _isFormValid
-                                      ? () => controller.signup()
-                                      : null,
-                                ),
-                                const SizedBox(height: 20),
-                                Text(
-                                  "Or sign up with",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isDark
-                                        ? Colors.white.withValues(alpha: 0.5)
-                                        : Colors.black.withValues(alpha: 0.5),
-                                  ),
-                                ),
-                                const SizedBox(height: 15),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    _socialIcon(
-                                      FontAwesomeIcons.google,
-                                      const Color(0xFFDB4437),
-                                      isDark,
-                                      onTap: () =>
-                                          controller.signupWithGoogle(),
-                                    ),
-                                    const SizedBox(width: 25),
-                                    _socialIcon(
-                                      FontAwesomeIcons.facebook,
-                                      const Color(0xFF4267B2),
-                                      isDark,
-                                      onTap: () =>
-                                          controller.signupWithFacebook(),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 20),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      "Already have an account? ",
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: isDark
-                                            ? Colors.white.withValues(
-                                                alpha: 0.7,
-                                              )
-                                            : Colors.black.withValues(
-                                                alpha: 0.54,
-                                              ),
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () => Get.offNamed(Routes.login),
-                                      child: Text(
-                                        "Login",
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: isDark
-                                              ? Colors.purple[200]
-                                              : Colors.purple[700],
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const Spacer(flex: 4),
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 16),
-                                  child: Text(
-                                    "Developed by Hritik Verma",
-                                    style: TextStyle(
-                                      color: isDark
-                                          ? Colors.white.withValues(alpha: 0.24)
-                                          : Colors.black.withValues(
-                                              alpha: 0.26,
-                                            ),
-                                      fontSize: 10,
-                                      letterSpacing: 1.1,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+            _buildBackground(isDark),
+            SafeArea(
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 60),
+                      _buildLogo(isDark),
+                      const SizedBox(height: 25),
+
+                      // Full Name Field with Reactive Error
+                      GetBuilder<SignupCtrl>(
+                        builder: (ctrl) => _buildField(
+                          hint: 'Full Name',
+                          icon: Icons.person_outline,
+                          isDark: isDark,
+                          controller: ctrl.nameController,
+                          errorText: _nameError,
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            if (controller.isLoading.value)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.45),
-                  child: const Center(
-                    child: CircularProgressIndicator(color: Colors.purple),
+
+                      const SizedBox(height: 10),
+                      _buildField(
+                        hint: 'Email',
+                        icon: Icons.email_outlined,
+                        isDark: isDark,
+                        controller: controller.emailController,
+                        errorText: _emailError,
+                      ),
+                      const SizedBox(height: 10),
+                      _buildField(
+                        hint: 'Password',
+                        icon: Icons.lock_outline,
+                        isDark: isDark,
+                        isPass: true,
+                        controller: controller.passwordController,
+                        errorText: _passwordError,
+                      ),
+                      const SizedBox(height: 10),
+                      _buildField(
+                        hint: 'Confirm Password',
+                        icon: Icons.lock_reset_outlined,
+                        isDark: isDark,
+                        isPass: true,
+                        controller: controller.confirmPasswordController,
+                        errorText: _confirmPasswordError,
+                      ),
+
+                      const SizedBox(height: 20),
+                      _buildActionButton(
+                        label: "Sign Up",
+                        onPressed: _isFormValid
+                            ? () => controller.signup()
+                            : null,
+                      ),
+
+                      const SizedBox(height: 20),
+                      _buildSocialDivider(isDark),
+                      const SizedBox(height: 15),
+                      _buildSocialRow(controller, isDark),
+
+                      const SizedBox(height: 20),
+                      _buildLoginRedirect(isDark),
+                      const SizedBox(height: 40),
+                      _buildFooter(isDark),
+                    ],
                   ),
                 ),
               ),
+            ),
+            if (controller.isLoading.value) _buildLoadingOverlay(),
           ],
         ),
       ),
+    );
+  }
+
+  // --- UI Helpers ---
+
+  Widget _buildBackground(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [const Color(0xFF1A0B2E), const Color(0xFF09040F)]
+              : [const Color(0xFFF3E5F5), Colors.white],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogo(bool isDark) {
+    return Column(
+      children: [
+        Image.asset(
+          isDark
+              ? 'assets/splash/vynx-dark-mode-splash-icon.png'
+              : 'assets/splash/vynx-light-mode-splash-icon.png',
+          height: 60,
+        ),
+        const SizedBox(height: 15),
+        Text(
+          "Create Account",
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          "Join the Vynx community today",
+          style: TextStyle(
+            fontSize: 14,
+            color: isDark ? Colors.white70 : Colors.black54,
+          ),
+        ),
+      ],
     );
   }
 
@@ -343,6 +280,92 @@ class _SignUpPageState extends State<SignUpPage> {
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSocialDivider(bool isDark) {
+    return Text(
+      "Or sign up with",
+      style: TextStyle(
+        fontSize: 12,
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.5)
+            : Colors.black.withValues(alpha: 0.5),
+      ),
+    );
+  }
+
+  Widget _buildSocialRow(SignupCtrl controller, bool isDark) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _socialIcon(
+          FontAwesomeIcons.google,
+          const Color(0xFFDB4437),
+          isDark,
+          onTap: () => controller.signupWithGoogle(),
+        ),
+        const SizedBox(width: 25),
+        _socialIcon(
+          FontAwesomeIcons.facebook,
+          const Color(0xFF4267B2),
+          isDark,
+          onTap: () => controller.signupWithFacebook(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoginRedirect(bool isDark) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          "Already have an account? ",
+          style: TextStyle(
+            fontSize: 13,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.7)
+                : Colors.black.withValues(alpha: 0.54),
+          ),
+        ),
+        GestureDetector(
+          onTap: () => Get.offNamed(Routes.login),
+          child: Text(
+            "Login",
+            style: TextStyle(
+              fontSize: 13,
+              color: isDark ? Colors.purple[200] : Colors.purple[700],
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFooter(bool isDark) {
+    return Text(
+      "Developed by Hritik Verma",
+      style: TextStyle(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.24)
+            : Colors.black.withValues(alpha: 0.26),
+        fontSize: 10,
+        letterSpacing: 1.1,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  Widget _buildLoadingOverlay() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.45),
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.purple),
         ),
       ),
     );

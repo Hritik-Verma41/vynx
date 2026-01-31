@@ -13,6 +13,21 @@ class SignupCtrl extends GetxController {
 
   var isLoading = false.obs;
 
+  // Track if user has interacted with the name field
+  var hasInteractedWithName = false.obs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    // Monitor name field to trigger validation visibility in real-time
+    nameController.addListener(() {
+      if (nameController.text.isNotEmpty || hasInteractedWithName.value) {
+        hasInteractedWithName.value = true;
+      }
+      update(); // Notifies GetBuilder/View to refresh validation state
+    });
+  }
+
   void _proceedToSetup({
     required String fullName,
     required String email,
@@ -84,6 +99,11 @@ class SignupCtrl extends GetxController {
   }
 
   void signup() {
+    hasInteractedWithName.value = true;
+    update();
+
+    if (nameController.text.trim().isEmpty) return;
+
     _proceedToSetup(
       fullName: nameController.text,
       email: emailController.text,

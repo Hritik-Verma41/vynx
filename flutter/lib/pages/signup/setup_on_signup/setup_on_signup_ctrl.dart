@@ -9,8 +9,11 @@ import 'package:vynx/routes/app_routes.dart';
 
 class SetupOnSignupCtrl extends GetxController {
   final data = Get.arguments;
+
   final firstNameController = TextEditingController();
   final lastNameController = TextEditingController();
+  final phoneController = TextEditingController();
+  final nameFocusNode = FocusNode();
 
   var selectedImagePath = "".obs;
   var socialImageUrl = "".obs;
@@ -20,13 +23,42 @@ class SetupOnSignupCtrl extends GetxController {
   var selectedGender = "male".obs;
   var selectedDefaultImage = "".obs;
 
+  var isPhoneValid = false.obs;
+  var completePhoneNumber = "".obs;
+  var phoneLength = 0.obs;
+
+  var hasInteractedWithName = false.obs;
+
+  // LOGIC: Hide counter if empty OR if validation passes for the specific country
+  String? get phoneCounterText {
+    if (phoneLength.value == 0 || isPhoneValid.value) {
+      return "";
+    }
+    return null; // Shows default "n/max" when invalid
+  }
+
+  bool get isNameValid => firstNameController.text.trim().isNotEmpty;
+  bool get isSubmitEnabled => isNameValid && isPhoneValid.value;
+
   @override
   void onInit() {
-    firstNameController.text = data['firstName'] ?? "";
-    lastNameController.text = data['lastName'] ?? "";
+    firstNameController.text = data?['firstName'] ?? "";
+    lastNameController.text = data?['lastName'] ?? "";
+    phoneController.text = data?['phoneNumber'] ?? "";
 
-    String? incomingImage = data['profileImage'] ?? data['photoUrl'];
+    firstNameController.addListener(() {
+      if (firstNameController.text.isNotEmpty || hasInteractedWithName.value) {
+        hasInteractedWithName.value = true;
+      }
+      update();
+    });
 
+    _initializeImage();
+    super.onInit();
+  }
+
+  void _initializeImage() {
+    String? incomingImage = data?['profileImage'] ?? data?['photoUrl'];
     if (incomingImage != null &&
         incomingImage.isNotEmpty &&
         incomingImage.startsWith('http')) {
@@ -34,12 +66,11 @@ class SetupOnSignupCtrl extends GetxController {
     } else {
       setRandomDefaultImage();
     }
-    super.onInit();
   }
 
   void setGender(String gender) {
+    if (selectedGender.value == gender) return;
     selectedGender.value = gender;
-
     if (socialImageUrl.value.isEmpty && selectedImagePath.value.isEmpty) {
       setRandomDefaultImage();
     }
@@ -63,7 +94,7 @@ class SetupOnSignupCtrl extends GetxController {
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
-        imageQuality: 80,
+        imageQuality: 70,
         maxWidth: 500,
       );
       if (image != null) {
@@ -72,7 +103,6 @@ class SetupOnSignupCtrl extends GetxController {
         selectedDefaultImage.value = "";
       }
     } catch (e) {
-      debugPrint("Image Picker Error: $e");
       Get.snackbar("Error", "Failed to pick image");
     }
   }
@@ -91,13 +121,18 @@ class SetupOnSignupCtrl extends GetxController {
   }
 
   Future<void> finalizeRegistration() async {
+    if (!isSubmitEnabled) {
+      hasInteractedWithName.value = true;
+      update();
+      return;
+    }
     isLoading.value = true;
     try {
       String profileImageData = "";
-
       if (selectedImagePath.value.isNotEmpty) {
-        File file = File(selectedImagePath.value);
-        profileImageData = base64Encode(await file.readAsBytes());
+        profileImageData = base64Encode(
+          await File(selectedImagePath.value).readAsBytes(),
+        );
       } else if (socialImageUrl.value.isNotEmpty) {
         profileImageData = socialImageUrl.value;
       } else if (selectedDefaultImage.value.isNotEmpty) {
@@ -111,14 +146,13 @@ class SetupOnSignupCtrl extends GetxController {
       final response = await dio.post(
         '/auth/register-or-link',
         data: {
-          'firstName': firstNameController.text,
-          'lastName': lastNameController.text,
-          'email': data['email'],
+          'firstName': firstNameController.text.trim(),
+          'lastName': lastNameController.text.trim(),
+          'email': data?['email'],
+          'phoneNumber': completePhoneNumber.value,
           'profileImage': profileImageData,
-          'password': data['password'],
-          'googleId': data['googleId'],
-          'facebookId': data['facebookId'],
-          'provider': data['authProvider'],
+          'password': data?['password'],
+          'provider': data?['authProvider'],
           'gender': selectedGender.value,
         },
       );
@@ -127,7 +161,7 @@ class SetupOnSignupCtrl extends GetxController {
         Get.offAllNamed(Routes.chat);
       }
     } catch (e) {
-      Get.snackbar("Error", "Account creation failed: ${e.toString()}");
+      Get.snackbar("Error", "Account creation failed");
     } finally {
       isLoading.value = false;
     }
@@ -137,6 +171,8 @@ class SetupOnSignupCtrl extends GetxController {
   void onClose() {
     firstNameController.dispose();
     lastNameController.dispose();
+    phoneController.dispose();
+    nameFocusNode.dispose();
     super.onClose();
   }
 }
