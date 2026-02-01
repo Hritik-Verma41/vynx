@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,166 +19,83 @@ class SetupOnSignupPage extends StatelessWidget {
         children: [
           _buildBackground(isDark),
           SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: IntrinsicHeight(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 30),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 30),
-                            _buildHeader(isDark),
-                            const SizedBox(height: 20),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 30),
+                  _buildHeader(isDark),
+                  const SizedBox(height: 25),
 
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _buildGenderBtn(controller, "Male", "male"),
-                                const SizedBox(width: 15),
-                                _buildGenderBtn(controller, "Female", "female"),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-
-                            _buildProfileAvatar(controller, context, isDark),
-                            const SizedBox(height: 15),
-
-                            Center(
-                              child: Text(
-                                "Or select a cartoon avatar:",
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.white60
-                                      : Colors.black54,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-
-                            _buildAvatarList(controller),
-                            const SizedBox(height: 20),
-
-                            _buildField(
-                              hint: "First Name",
-                              icon: Icons.person,
-                              isDark: isDark,
-                              controller: controller.firstNameController,
-                              focusNode: controller.nameFocusNode,
-                            ),
-
-                            GetBuilder<SetupOnSignupCtrl>(
-                              builder: (ctrl) => _buildNameWarning(
-                                show:
-                                    ctrl.hasInteractedWithName.value &&
-                                    !ctrl.isNameValid,
-                                message: "First name is required",
-                              ),
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            _buildField(
-                              hint: "Last Name (Optional)",
-                              icon: Icons.person_outline,
-                              isDark: isDark,
-                              controller: controller.lastNameController,
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            // DYNAMIC PHONE FIELD
-                            Obx(
-                              () => IntlPhoneField(
-                                controller: controller.phoneController,
-                                initialCountryCode: 'IN',
-                                autovalidateMode:
-                                    AutovalidateMode.onUserInteraction,
-                                dropdownTextStyle: TextStyle(
-                                  color: isDark ? Colors.white : Colors.black,
-                                ),
-                                style: TextStyle(
-                                  color: isDark ? Colors.white : Colors.black,
-                                  fontSize: 14,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: 'Phone Number',
-                                  counterText: controller
-                                      .phoneCounterText, // Reacts to validity
-                                  hintStyle: TextStyle(
-                                    color: isDark
-                                        ? Colors.white.withValues(alpha: 0.3)
-                                        : Colors.black.withValues(alpha: 0.3),
-                                  ),
-                                  filled: true,
-                                  fillColor: isDark
-                                      ? Colors.white.withValues(alpha: 0.05)
-                                      : Colors.black.withValues(alpha: 0.05),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(15),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  errorStyle: const TextStyle(
-                                    color: Colors.redAccent,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                onChanged: (phone) {
-                                  controller.phoneLength.value =
-                                      phone.number.length;
-                                  controller.completePhoneNumber.value =
-                                      phone.completeNumber;
-                                  try {
-                                    // This library check handles various country lengths automatically
-                                    controller.isPhoneValid.value = phone
-                                        .isValidNumber();
-                                  } catch (e) {
-                                    controller.isPhoneValid.value = false;
-                                  }
-                                  controller.update();
-                                },
-                              ),
-                            ),
-
-                            const Spacer(),
-                            const SizedBox(height: 20),
-
-                            GetBuilder<SetupOnSignupCtrl>(
-                              builder: (ctrl) {
-                                return _buildActionButton(
-                                  label: "Finish & Create Account",
-                                  onPressed: ctrl.isSubmitEnabled
-                                      ? () => ctrl.startPhoneVerification()
-                                      : null,
-                                );
-                              },
-                            ),
-
-                            const SizedBox(height: 20),
-                            Center(child: _buildFooter(isDark)),
-                            const SizedBox(height: 20),
-                          ],
-                        ),
-                      ),
+                  Obx(
+                    () => Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _genderBtn(controller, "Male", "male"),
+                        const SizedBox(width: 15),
+                        _genderBtn(controller, "Female", "female"),
+                      ],
                     ),
                   ),
-                );
-              },
+
+                  const SizedBox(height: 25),
+                  _buildMainAvatar(controller, context, isDark),
+                  const SizedBox(height: 20),
+                  Center(
+                    child: _subText("Or select a cartoon avatar:", isDark),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildAvatarList(controller),
+                  const SizedBox(height: 30),
+
+                  _buildTextField(
+                    hint: "First Name",
+                    icon: Icons.person,
+                    isDark: isDark,
+                    controller: controller.firstNameController,
+                    focusNode: controller.nameFocusNode,
+                  ),
+                  Obx(
+                    () => _buildWarning(
+                      show:
+                          controller.hasInteractedWithName.value &&
+                          !controller.isNameValid,
+                      text: "First name is required",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    hint: "Last Name (Optional)",
+                    icon: Icons.person_outline,
+                    isDark: isDark,
+                    controller: controller.lastNameController,
+                  ),
+                  const SizedBox(height: 15),
+
+                  // Phone Field - Loader Removed, renders immediately
+                  _buildPhoneInput(controller, isDark),
+
+                  const SizedBox(height: 40),
+                  Obx(
+                    () => _buildSubmitBtn(
+                      label: "Finish & Create Account",
+                      onPressed: controller.isSubmitEnabled
+                          ? () => controller.startPhoneVerification()
+                          : null,
+                    ),
+                  ),
+
+                  const SizedBox(height: 25),
+                  Center(child: _footerText(isDark)),
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
           Obx(
             () => controller.isLoading.value
-                ? _buildLoadingOverlay()
+                ? _loadingOverlay()
                 : const SizedBox.shrink(),
           ),
         ],
@@ -185,86 +103,38 @@ class SetupOnSignupPage extends StatelessWidget {
     );
   }
 
-  // --- Helpers ---
-
-  Widget _buildBackground(bool isDark) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [const Color(0xFF1A0B2E), const Color(0xFF09040F)]
-              : [const Color(0xFFF3E5F5), Colors.white],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(bool isDark) {
-    return Column(
-      children: [
-        Center(
-          child: Text(
-            "Complete Your Profile",
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Center(
-          child: Text(
-            "Choose your look and contact info.",
-            style: TextStyle(
-              fontSize: 14,
-              color: isDark ? Colors.white70 : Colors.black54,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProfileAvatar(
-    SetupOnSignupCtrl controller,
+  // --- Avatar Logic ---
+  Widget _buildMainAvatar(
+    SetupOnSignupCtrl ctrl,
     BuildContext context,
     bool isDark,
   ) {
     return Center(
       child: Obx(
         () => GestureDetector(
-          onTap: () => _showImageSourceSheet(context, controller, isDark),
+          onTap: () => _showPickerSheet(context, ctrl, isDark),
           child: Stack(
+            alignment: Alignment.bottomRight,
             children: [
               Container(
+                width: 110,
+                height: 110,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.purple, width: 3),
                 ),
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Colors.purple.withValues(alpha: 0.1),
-                  backgroundImage: controller.getProfileImage(),
+                child: ClipOval(
+                  child: !ctrl.isPageReady.value
+                      ? const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : _imageDispatcher(ctrl),
                 ),
               ),
-              Positioned(
-                bottom: 2,
-                right: 2,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
-                    color: Colors.purple,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.add_a_photo,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
+              const CircleAvatar(
+                backgroundColor: Colors.purple,
+                radius: 16,
+                child: Icon(Icons.camera_alt, size: 16, color: Colors.white),
               ),
             ],
           ),
@@ -273,32 +143,85 @@ class SetupOnSignupPage extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatarList(SetupOnSignupCtrl controller) {
+  Widget _imageDispatcher(SetupOnSignupCtrl ctrl) {
+    if (ctrl.selectedImagePath.value.isNotEmpty) {
+      return Image.file(File(ctrl.selectedImagePath.value), fit: BoxFit.cover);
+    }
+    if (ctrl.socialImageUrl.value.isNotEmpty) {
+      return Image.network(
+        ctrl.socialImageUrl.value,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, progress) => progress == null
+            ? child
+            : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    final asset = ctrl.selectedDefaultImage.value.isEmpty
+        ? "default-profile-male-1.png"
+        : ctrl.selectedDefaultImage.value;
+    return Image.asset(
+      'assets/images/$asset',
+      fit: BoxFit.cover,
+      frameBuilder: (c, child, f, s) => f == null
+          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+          : child,
+    );
+  }
+
+  Widget _buildAvatarList(SetupOnSignupCtrl ctrl) {
     return SizedBox(
-      height: 60,
+      height: 65,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         itemCount: 5,
         itemBuilder: (context, index) {
           return Obx(() {
-            final img =
-                "default-profile-${controller.selectedGender.value}-${index + 1}.png";
-            final isSelected = controller.selectedDefaultImage.value == img;
+            // The gender or selection might change, so we keep the logic inside Obx
+            final imgName =
+                "default-profile-${ctrl.selectedGender.value}-${index + 1}.png";
+            final isSelected = ctrl.selectedDefaultImage.value == imgName;
+
             return GestureDetector(
-              onTap: () => controller.selectSpecificDefault(img),
+              onTap: () => ctrl.selectSpecificDefault(imgName),
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 8),
+                width: 65,
+                height: 65,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: isSelected ? Colors.purple : Colors.transparent,
-                    width: 2.5,
+                    color: isSelected ? Colors.purple : Colors.white10,
+                    width: 2,
                   ),
                 ),
-                child: CircleAvatar(
-                  radius: 24,
-                  backgroundImage: AssetImage('assets/images/$img'),
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: 1.0,
+                    child: ClipOval(
+                      child: !ctrl.isPageReady.value
+                          ? const Padding(
+                              padding: EdgeInsets.all(15.0),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                              ),
+                            )
+                          : Image.asset(
+                              'assets/images/$imgName',
+                              fit: BoxFit.cover,
+                              frameBuilder: (c, child, frame, wasSync) {
+                                if (wasSync) return child;
+                                return frame == null
+                                    ? const Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 1,
+                                        ),
+                                      )
+                                    : child;
+                              },
+                            ),
+                    ),
+                  ),
                 ),
               ),
             );
@@ -308,172 +231,202 @@ class SetupOnSignupPage extends StatelessWidget {
     );
   }
 
-  Widget _buildNameWarning({required bool show, required String message}) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      height: show ? 20 : 0,
-      padding: const EdgeInsets.only(left: 12, top: 4),
-      child: show
-          ? Text(
-              message,
-              style: const TextStyle(color: Colors.redAccent, fontSize: 12),
-            )
-          : const SizedBox.shrink(),
+  // --- Phone Field renders immediately ---
+  Widget _buildPhoneInput(SetupOnSignupCtrl ctrl, bool isDark) {
+    return Obx(
+      () => IntlPhoneField(
+        controller: ctrl.phoneController,
+        initialCountryCode: 'IN',
+        dropdownTextStyle: TextStyle(
+          color: isDark ? Colors.white : Colors.black,
+        ),
+        style: TextStyle(
+          color: isDark ? Colors.white : Colors.black,
+          fontSize: 14,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Phone Number',
+          counterText: ctrl.phoneCounterText,
+          filled: true,
+          fillColor: isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.05),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide.none,
+          ),
+        ),
+        onChanged: (phone) {
+          ctrl.phoneLength.value = phone.number.length;
+          ctrl.completePhoneNumber.value = phone.completeNumber;
+          try {
+            ctrl.isPhoneValid.value = phone.isValidNumber();
+          } catch (_) {
+            ctrl.isPhoneValid.value = false;
+          }
+        },
+      ),
     );
   }
 
-  Widget _buildGenderBtn(
-    SetupOnSignupCtrl controller,
-    String label,
-    String val,
-  ) {
-    return Obx(() {
-      bool isSelected = controller.selectedGender.value == val;
-      return ElevatedButton(
-        onPressed: () => controller.setGender(val),
+  // --- Helpers ---
+  Widget _buildBackground(bool isDark) => Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: isDark
+            ? [const Color(0xFF1A0B2E), const Color(0xFF09040F)]
+            : [const Color(0xFFF3E5F5), Colors.white],
+      ),
+    ),
+  );
+  Widget _buildHeader(bool isDark) => Column(
+    children: [
+      Center(
+        child: Text(
+          "Complete Your Profile",
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+      ),
+      const SizedBox(height: 5),
+      Text(
+        "Set up your identity",
+        style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
+      ),
+    ],
+  );
+  Widget _genderBtn(SetupOnSignupCtrl ctrl, String label, String val) =>
+      ElevatedButton(
+        onPressed: () => ctrl.setGender(val),
         style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected
+          backgroundColor: ctrl.selectedGender.value == val
               ? Colors.purple
               : Colors.grey.withValues(alpha: 0.1),
-          foregroundColor: isSelected ? Colors.white : Colors.grey,
+          foregroundColor: ctrl.selectedGender.value == val
+              ? Colors.white
+              : Colors.grey,
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-          elevation: 0,
         ),
-        child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        child: Text(label),
       );
-    });
-  }
-
-  Widget _buildField({
+  Widget _buildTextField({
     required String hint,
     required IconData icon,
     required bool isDark,
     required TextEditingController controller,
     FocusNode? focusNode,
-  }) {
-    return TextField(
-      controller: controller,
-      focusNode: focusNode,
-      style: TextStyle(
-        color: isDark ? Colors.white : Colors.black,
-        fontSize: 14,
+  }) => TextField(
+    controller: controller,
+    focusNode: focusNode,
+    style: TextStyle(color: isDark ? Colors.white : Colors.black),
+    decoration: InputDecoration(
+      prefixIcon: Icon(icon, color: Colors.purple),
+      hintText: hint,
+      filled: true,
+      fillColor: isDark
+          ? Colors.white.withValues(alpha: 0.05)
+          : Colors.black.withValues(alpha: 0.05),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: BorderSide.none,
       ),
-      decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: Colors.purple, size: 20),
-        hintText: hint,
-        hintStyle: TextStyle(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.3)
-              : Colors.black.withValues(alpha: 0.3),
-        ),
-        filled: true,
-        fillColor: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.black.withValues(alpha: 0.05),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 14),
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
+    ),
+  );
+  Widget _buildSubmitBtn({
     required String label,
     required VoidCallback? onPressed,
-  }) {
-    return Container(
-      width: double.infinity,
-      height: 55,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-        gradient: onPressed == null
-            ? null
-            : const LinearGradient(
-                colors: [Color(0xFF8E24AA), Color(0xFF4A148C)],
-              ),
-        color: onPressed == null ? Colors.grey.withValues(alpha: 0.3) : null,
+  }) => Container(
+    width: double.infinity,
+    height: 55,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(15),
+      gradient: onPressed == null
+          ? null
+          : const LinearGradient(
+              colors: [Color(0xFF8E24AA), Color(0xFF4A148C)],
+            ),
+      color: onPressed == null ? Colors.grey.withValues(alpha: 0.3) : null,
+    ),
+    child: ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.transparent,
+        shadowColor: Colors.transparent,
       ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 18,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
         ),
       ),
-    );
-  }
-
-  Widget _buildFooter(bool isDark) {
-    return Text(
-      "Developed by Hritik Verma",
-      style: TextStyle(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.3)
-            : Colors.black.withValues(alpha: 0.3),
-        fontSize: 11,
-        letterSpacing: 1.1,
-      ),
-    );
-  }
-
-  Widget _buildLoadingOverlay() {
-    return Container(
-      color: Colors.black.withValues(alpha: 0.6),
-      child: const Center(
-        child: CircularProgressIndicator(color: Colors.purple),
-      ),
-    );
-  }
-
-  void _showImageSourceSheet(
+    ),
+  );
+  Widget _buildWarning({required bool show, required String text}) => show
+      ? Padding(
+          padding: const EdgeInsets.only(left: 10, top: 5),
+          child: Text(
+            text,
+            style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+          ),
+        )
+      : const SizedBox.shrink();
+  Widget _subText(String t, bool dark) => Text(
+    t,
+    style: TextStyle(
+      color: dark ? Colors.white54 : Colors.black54,
+      fontSize: 12,
+    ),
+  );
+  Widget _footerText(bool dark) => Text(
+    "Developed by Hritik Verma",
+    style: TextStyle(
+      color: dark ? Colors.white24 : Colors.black26,
+      fontSize: 11,
+    ),
+  );
+  Widget _loadingOverlay() => Container(
+    color: Colors.black54,
+    child: const Center(child: CircularProgressIndicator(color: Colors.purple)),
+  );
+  void _showPickerSheet(
     BuildContext context,
-    SetupOnSignupCtrl controller,
-    bool isDark,
-  ) {
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1A0B2E) : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-        ),
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: Colors.purple),
-              title: const Text("Gallery"),
-              onTap: () {
-                Get.back();
-                controller.pickImage(ImageSource.gallery);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: Colors.purple),
-              title: const Text("Camera"),
-              onTap: () {
-                Get.back();
-                controller.pickImage(ImageSource.camera);
-              },
-            ),
-          ],
-        ),
+    SetupOnSignupCtrl ctrl,
+    bool dark,
+  ) => Get.bottomSheet(
+    Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF1A0B2E) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
       ),
-    );
-  }
+      child: Wrap(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.photo_library, color: Colors.purple),
+            title: const Text("Gallery"),
+            onTap: () {
+              Get.back();
+              ctrl.pickImage(ImageSource.gallery);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.camera_alt, color: Colors.purple),
+            title: const Text("Camera"),
+            onTap: () {
+              Get.back();
+              ctrl.pickImage(ImageSource.camera);
+            },
+          ),
+        ],
+      ),
+    ),
+  );
 }

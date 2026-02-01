@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -19,6 +21,22 @@ class AuthService extends GetxService {
   void onInit() {
     super.onInit();
     firebaseUser.bindStream(_auth.authStateChanges());
+  }
+
+  String? _getHighResPhotoUrl(User? user) {
+    if (user == null || user.photoURL == null) return null;
+
+    String url = user.photoURL!;
+
+    if (url.contains('googleusercontent.com')) {
+      return url.replaceAll('s96-c', 's0');
+    }
+
+    if (url.contains('facebook.com')) {
+      return "$url?type=large&width=1000&height=1000";
+    }
+
+    return url;
   }
 
   Future<UserCredential?> signInWithGoogle() async {
@@ -46,7 +64,6 @@ class AuthService extends GetxService {
     try {
       final LoginResult result = await FacebookAuth.instance.login(
         permissions: ['email', 'public_profile'],
-        loginBehavior: LoginBehavior.webOnly,
       );
 
       if (result.status == LoginStatus.success) {
@@ -62,10 +79,28 @@ class AuthService extends GetxService {
     }
   }
 
+  Map<String, dynamic> getUserData(UserCredential credential) {
+    final user = credential.user;
+    String fullName = (user?.displayName ?? "").trim();
+    List<String> parts = fullName.split(RegExp(r'\s+'));
+    return {
+      'uid': user?.uid,
+      'email': user?.email,
+      'displayName': user?.displayName,
+      'firstName': parts.isNotEmpty ? parts[0] : "",
+      'lastName': parts.length > 1 ? parts.sublist(1).join(' ') : "",
+      'photoUrl': _getHighResPhotoUrl(user),
+    };
+  }
+
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
-    await FacebookAuth.instance.logOut();
-    await _auth.signOut();
+    try {
+      await _googleSignIn.signOut();
+      await FacebookAuth.instance.logOut();
+      await _auth.signOut();
+    } catch (e) {
+      log("Sign out error: $e");
+    }
   }
 
   void _showErrorSnackbar(String title, String message) {
@@ -75,6 +110,8 @@ class AuthService extends GetxService {
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: Colors.red.withValues(alpha: 0.1),
       colorText: Colors.red,
+      margin: const EdgeInsets.all(15),
+      borderRadius: 10,
     );
   }
 }
