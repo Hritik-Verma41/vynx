@@ -12,24 +12,22 @@ class SignupCtrl extends GetxController {
   final confirmPasswordController = TextEditingController();
 
   var isLoading = false.obs;
-
-  // Track if user has interacted with the name field
   var hasInteractedWithName = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    // Monitor name field to trigger validation visibility in real-time
     nameController.addListener(() {
       if (nameController.text.isNotEmpty || hasInteractedWithName.value) {
         hasInteractedWithName.value = true;
       }
-      update(); // Notifies GetBuilder/View to refresh validation state
+      update();
     });
   }
 
   void _proceedToSetup({
-    required String fullName,
+    required String firstName,
+    required String lastName,
     required String email,
     String? image,
     String? gId,
@@ -37,10 +35,6 @@ class SignupCtrl extends GetxController {
     required String provider,
     String? password,
   }) {
-    List<String> parts = fullName.trim().split(' ');
-    String firstName = parts.isNotEmpty ? parts[0] : "";
-    String lastName = parts.length > 1 ? parts.sublist(1).join(' ') : "";
-
     Get.toNamed(
       Routes.setupOnSignUp,
       arguments: {
@@ -61,12 +55,14 @@ class SignupCtrl extends GetxController {
     try {
       final userCredential = await _auth.signInWithGoogle();
       if (userCredential != null) {
-        final user = userCredential.user;
+        final userData = _auth.getUserData(userCredential);
+
         _proceedToSetup(
-          fullName: user?.displayName ?? "New User",
-          email: user?.email ?? "",
-          image: user?.photoURL,
-          gId: user?.uid,
+          firstName: userData['firstName'],
+          lastName: userData['lastName'],
+          email: userData['email'] ?? "",
+          image: userData['photoUrl'],
+          gId: userData['uid'],
           provider: 'google',
         );
       }
@@ -82,12 +78,14 @@ class SignupCtrl extends GetxController {
     try {
       final userCredential = await _auth.signInWithFacebook();
       if (userCredential != null) {
-        final user = userCredential.user;
+        final userData = _auth.getUserData(userCredential);
+
         _proceedToSetup(
-          fullName: user?.displayName ?? "New User",
-          email: user?.email ?? "",
-          image: user?.photoURL,
-          fbId: user?.uid,
+          firstName: userData['firstName'],
+          lastName: userData['lastName'],
+          email: userData['email'] ?? "",
+          image: userData['photoUrl'],
+          fbId: userData['uid'],
           provider: 'facebook',
         );
       }
@@ -104,8 +102,13 @@ class SignupCtrl extends GetxController {
 
     if (nameController.text.trim().isEmpty) return;
 
+    List<String> parts = nameController.text.trim().split(RegExp(r'\s+'));
+    String fName = parts.isNotEmpty ? parts[0] : "";
+    String lName = parts.length > 1 ? parts.sublist(1).join(' ') : "";
+
     _proceedToSetup(
-      fullName: nameController.text,
+      firstName: fName,
+      lastName: lName,
       email: emailController.text,
       password: passwordController.text,
       provider: 'local',

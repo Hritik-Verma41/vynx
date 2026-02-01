@@ -1,19 +1,19 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dio/dio.dart';
-import 'package:http/http.dart' as http;
 import 'package:vynx/pages/signup/setup_on_signup/setup_on_signup_ctrl.dart';
 import 'package:vynx/services/api_service.dart';
+import 'package:vynx/services/cloudinary_service.dart'; // Import your new service
 import 'package:vynx/routes/app_routes.dart';
 
 class OtpCtrl extends GetxController {
   final setupCtrl = Get.find<SetupOnSignupCtrl>();
+  final _cloudinary =
+      Get.find<CloudinaryService>(); // Access the global service
   final otpController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final Dio _dio = Get.find<ApiService>().dio;
@@ -29,8 +29,6 @@ class OtpCtrl extends GetxController {
     startTimer();
     super.onInit();
   }
-
-  // --- Timer & Resend Logic ---
 
   void startTimer() {
     canResend.value = false;
@@ -49,7 +47,7 @@ class OtpCtrl extends GetxController {
   void resendOtp() {
     if (canResend.value) {
       otpError.value = "";
-      setupCtrl.startPhoneVerification(); // Re-triggers Firebase SMS
+      setupCtrl.startPhoneVerification();
       startTimer();
     }
   }
@@ -58,8 +56,6 @@ class OtpCtrl extends GetxController {
     currentOtpLength.value = val.length;
     if (otpError.value.isNotEmpty) otpError.value = "";
   }
-
-  // --- Verification Logic ---
 
   Future<void> verifyAndRegister() async {
     String code = otpController.text.trim();
@@ -88,34 +84,34 @@ class OtpCtrl extends GetxController {
       String? uid = userCred.user?.uid;
 
       if (uid != null) {
-        // 2. Call Backend (Image processing happens here)
+        // 2. Upload Image and Call Backend
         await _callBackendApi(uid);
 
-        // 3. Success -> Final Navigation
+        // 3. Success
         Get.offAllNamed(Routes.chat);
       }
     } catch (e) {
       log("Auth/Backend Flow Error: $e");
       otpError.value = "Registration failed. Please try again.";
     } finally {
-      // SAFETY: If an error happened or the API timed out,
-      // we must reset the loading state so the user isn't stuck.
       if (Get.currentRoute == Routes.otpPage) {
         setupCtrl.isLoading.value = false;
       }
     }
   }
 
+  // --- Image Handling & API Flow ---
+
   Future<void> _callBackendApi(String firebaseUid) async {
-    // Process image (Local, Network, or Asset)
-    String profileImageData = await _processImageHelper();
+    // 1. Get the Cloudinary URL using our specialized service
+    String profileImageUrl = await _getCloudinaryUrl();
 
     final payload = {
       'firstName': setupCtrl.firstNameController.text.trim(),
       'lastName': setupCtrl.lastNameController.text.trim(),
       'email': setupCtrl.data?['email'],
       'phoneNumber': setupCtrl.completePhoneNumber.value,
-      'profileImage': profileImageData,
+      'profileImage': profileImageUrl, // Sending URL instead of massive Base64
       'gender': setupCtrl.selectedGender.value,
       'firebaseUid': firebaseUid,
       'password': setupCtrl.data?['password'],
@@ -125,50 +121,43 @@ class OtpCtrl extends GetxController {
     };
 
     try {
-      // POST to Node.js backend
       await _dio.post('/auth/sign-up', data: payload);
     } on DioException catch (e) {
       log("Backend Dio Error: ${e.message}");
-      rethrow; // Pass to parent catch-finally
+      rethrow;
     }
   }
 
-  // --- Image Processing Helpers ---
-
-  Future<String> _processImageHelper() async {
+  Future<String> _getCloudinaryUrl() async {
     try {
-      // Case A: Gallery Image
+      // Priority 1: Picked from Gallery/Camera
       if (setupCtrl.selectedImagePath.value.isNotEmpty) {
-        return base64Encode(
-          await File(setupCtrl.selectedImagePath.value).readAsBytes(),
-        );
+        return await _cloudinary.uploadImage(
+              filePath: setupCtrl.selectedImagePath.value,
+            ) ??
+            "";
       }
 
-      // Case B: Social URL (Download)
+      // Priority 2: Social Photo URL
       if (setupCtrl.socialImageUrl.value.isNotEmpty) {
-        final res = await http
-            .get(Uri.parse(setupCtrl.socialImageUrl.value))
-            .timeout(const Duration(seconds: 5));
-        if (res.statusCode == 200) return base64Encode(res.bodyBytes);
+        return await _cloudinary.uploadImage(
+              networkUrl: setupCtrl.socialImageUrl.value,
+            ) ??
+            "";
       }
 
-      // Case C: Local Asset (Avatar)
-      return await _loadAssetAsBase64();
-    } catch (e) {
-      log("Image process error: $e. Using asset fallback.");
-      return await _loadAssetAsBase64();
-    }
-  }
-
-  Future<String> _loadAssetAsBase64() async {
-    try {
-      String assetName = setupCtrl.selectedDefaultImage.value.trim();
+      // Priority 3: Default App Asset
+      String assetName = setupCtrl.selectedDefaultImage.value;
       if (assetName.isEmpty) assetName = "default-profile-male-1.png";
 
-      final data = await rootBundle.load('assets/images/$assetName');
-      return base64Encode(data.buffer.asUint8List());
+      final byteData = await rootBundle.load('assets/images/$assetName');
+      return await _cloudinary.uploadImage(
+            assetBytes: byteData.buffer.asUint8List(),
+            assetName: assetName,
+          ) ??
+          "";
     } catch (e) {
-      log("Asset missing: $e. Returning empty string to avoid hang.");
+      log("Error during Cloudinary step: $e");
       return "";
     }
   }

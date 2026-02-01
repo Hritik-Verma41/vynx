@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/auth_service.dart';
+import 'package:vynx/services/cloudinary_service.dart';
 
 import './routes/app_pages.dart';
 import './routes/app_routes.dart';
@@ -11,8 +12,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  Get.put(AuthService(), permanent: true);
   await Get.putAsync(() async => ApiService());
+  Get.put(AuthService(), permanent: true);
+  await Get.putAsync(() async => CloudinaryService());
 
   runApp(const MyApp());
 }
