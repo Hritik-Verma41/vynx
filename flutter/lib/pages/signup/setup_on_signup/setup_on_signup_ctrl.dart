@@ -1,30 +1,24 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:vynx/routes/app_routes.dart';
-import 'package:vynx/pages/signup/otp/otp_ctrl.dart'; // Ensure this path is correct
+import 'package:vynx/pages/signup/otp/otp_ctrl.dart';
 
 class SetupOnSignupCtrl extends GetxController {
   final data = Get.arguments;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Text Controllers
   final firstNameController = TextEditingController();
   final lastNameController = TextEditingController();
   final phoneController = TextEditingController();
   final nameFocusNode = FocusNode();
 
-  // Observables
+  var isPageReady = false.obs; // Used only for smooth image decoding
+  var isLoading = false.obs;
   var selectedImagePath = "".obs;
   var socialImageUrl = "".obs;
-  var isLoading = false.obs;
-  final ImagePicker _picker = ImagePicker();
-
   var selectedGender = "male".obs;
   var selectedDefaultImage = "".obs;
 
@@ -33,22 +27,27 @@ class SetupOnSignupCtrl extends GetxController {
   var phoneLength = 0.obs;
   var hasInteractedWithName = false.obs;
 
+  final ImagePicker _picker = ImagePicker();
   String _verificationId = "";
+
   String get verificationIdValue => _verificationId;
 
   @override
   void onInit() {
     firstNameController.text = data?['firstName'] ?? "";
     lastNameController.text = data?['lastName'] ?? "";
-    _initializeImage();
+
+    // We keep a small delay for images only to ensure the transition is smooth
+    Future.delayed(const Duration(milliseconds: 300), () {
+      isPageReady.value = true;
+      _initializeImage();
+    });
     super.onInit();
   }
 
   void _initializeImage() {
     String? incomingImage = data?['profileImage'] ?? data?['photoUrl'];
-    if (incomingImage != null &&
-        incomingImage.isNotEmpty &&
-        incomingImage.startsWith('http')) {
+    if (incomingImage != null && incomingImage.startsWith('http')) {
       socialImageUrl.value = incomingImage;
     } else {
       setRandomDefaultImage();
@@ -81,8 +80,8 @@ class SetupOnSignupCtrl extends GetxController {
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
-        imageQuality: 70,
-        maxWidth: 500,
+        imageQuality: 60,
+        maxWidth: 600,
       );
       if (image != null) {
         selectedImagePath.value = image.path;
@@ -90,21 +89,8 @@ class SetupOnSignupCtrl extends GetxController {
         selectedDefaultImage.value = "";
       }
     } catch (e) {
-      Get.snackbar("Error", "Failed to pick image");
+      Get.snackbar("Error", "Could not access image.");
     }
-  }
-
-  ImageProvider getProfileImage() {
-    if (selectedImagePath.value.isNotEmpty) {
-      return FileImage(File(selectedImagePath.value));
-    }
-    if (socialImageUrl.value.isNotEmpty) {
-      return NetworkImage(socialImageUrl.value);
-    }
-    String assetPath = selectedDefaultImage.value.isEmpty
-        ? 'default-profile-male-1.png'
-        : selectedDefaultImage.value;
-    return AssetImage('assets/images/$assetPath');
   }
 
   String? get phoneCounterText =>
@@ -118,18 +104,16 @@ class SetupOnSignupCtrl extends GetxController {
       update();
       return;
     }
-
     isLoading.value = true;
     try {
       await _auth.verifyPhoneNumber(
         phoneNumber: completePhoneNumber.value,
         verificationCompleted: (PhoneAuthCredential credential) async {
-          // Auto-verification on Android
           if (Get.isRegistered<OtpCtrl>()) {
             Get.find<OtpCtrl>().completeWithCredential(credential);
           }
         },
-        verificationFailed: (FirebaseAuthException e) {
+        verificationFailed: (e) {
           isLoading.value = false;
           Get.snackbar("Auth Error", e.message ?? "Verification Failed");
         },
@@ -138,45 +122,12 @@ class SetupOnSignupCtrl extends GetxController {
           isLoading.value = false;
           Get.toNamed(Routes.otpPage);
         },
-        codeAutoRetrievalTimeout: (String verId) {
-          _verificationId = verId;
-        },
+        codeAutoRetrievalTimeout: (verId) => _verificationId = verId,
       );
     } catch (e) {
       isLoading.value = false;
-      Get.snackbar("Error", "Failed to send SMS code");
+      Get.snackbar("Error", "Check your connection and try again.");
     }
-  }
-
-  // Helper method for the final Backend API call
-  Future<void> callBackendApi(String firebaseUid) async {
-    String profileImageData = "";
-    if (selectedImagePath.value.isNotEmpty) {
-      profileImageData = base64Encode(
-        await File(selectedImagePath.value).readAsBytes(),
-      );
-    } else if (socialImageUrl.value.isNotEmpty) {
-      profileImageData = socialImageUrl.value;
-    } else {
-      ByteData bytes = await rootBundle.load(
-        'assets/images/${selectedDefaultImage.value}',
-      );
-      profileImageData = base64Encode(bytes.buffer.asUint8List());
-    }
-
-    final dio = Dio(BaseOptions(baseUrl: 'http://10.0.2.2:3000'));
-    await dio.post(
-      '/auth/register-or-link',
-      data: {
-        'firstName': firstNameController.text.trim(),
-        'lastName': lastNameController.text.trim(),
-        'email': data?['email'],
-        'phoneNumber': completePhoneNumber.value,
-        'profileImage': profileImageData,
-        'gender': selectedGender.value,
-        'firebaseUid': firebaseUid,
-      },
-    );
   }
 
   @override

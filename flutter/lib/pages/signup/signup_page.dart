@@ -258,11 +258,12 @@ class _SignUpPageState extends State<SignUpPage> {
       height: 50,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          colors: isDisabled
-              ? [Colors.grey.shade400, Colors.grey.shade500]
-              : [const Color(0xFF8E24AA), const Color(0xFF4A148C)],
-        ),
+        gradient: isDisabled
+            ? null
+            : const LinearGradient(
+                colors: [Color(0xFF8E24AA), Color(0xFF4A148C)],
+              ),
+        color: isDisabled ? Colors.grey.withValues(alpha: 0.3) : null,
       ),
       child: ElevatedButton(
         onPressed: onPressed,

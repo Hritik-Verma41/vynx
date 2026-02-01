@@ -34,10 +34,7 @@ class OtpPage extends StatelessWidget {
                   const SizedBox(height: 30),
                   _buildTextHeader(controller, isDark),
                   const SizedBox(height: 40),
-                  _buildOtpInput(
-                    controller,
-                    isDark,
-                  ), // Logic inside this helper
+                  _buildOtpInput(controller, isDark),
                   const SizedBox(height: 30),
                   _buildTimerSection(controller, isDark),
                   const SizedBox(height: 100),
@@ -95,11 +92,7 @@ class OtpPage extends StatelessWidget {
           keyboardType: TextInputType.number,
           textAlign: TextAlign.center,
           maxLength: 6,
-          onChanged: (val) {
-            if (controller.otpError.value.isNotEmpty) {
-              controller.otpError.value = "";
-            }
-          },
+          onChanged: (val) => controller.onOtpChanged(val),
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -171,17 +164,29 @@ class OtpPage extends StatelessWidget {
   Widget _buildVerifyButton(OtpCtrl controller) {
     return Obx(() {
       bool isLoading = controller.setupCtrl.isLoading.value;
-      return SizedBox(
+      bool isOtpComplete = controller.currentOtpLength.value == 6;
+      bool isEnabled = isOtpComplete && !isLoading;
+
+      return Container(
         width: double.infinity,
         height: 55,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          gradient: !isEnabled
+              ? null
+              : const LinearGradient(
+                  colors: [Color(0xFF8E24AA), Color(0xFF4A148C)],
+                ),
+          color: !isEnabled ? Colors.grey.withValues(alpha: 0.3) : null,
+        ),
         child: ElevatedButton(
-          onPressed: isLoading ? null : () => controller.verifyAndRegister(),
+          onPressed: isEnabled ? () => controller.verifyAndRegister() : null,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.purple,
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15),
             ),
-            elevation: 0,
           ),
           child: isLoading
               ? const SizedBox(
