@@ -4,22 +4,32 @@ interface IUser {
     firstName: string;
     lastName: string;
     email: string;
-    password?: string; // Optional for SSO users
+    phoneNumber: string;
+    password?: string | null;
     profileImage: string;
-    googleId?: string;
-    facebookId?: string;
-    authProviders: ('local' | 'google' | 'facegook')[];
+    gender: 'male' | 'female' | 'other';
+    firebaseUid: string;
+    googleUid?: string;
+    facebookUid?: string;
+    providers: ('local' | 'google' | 'facegook' | 'phone')[];
 }
 
 const userSchema = new Schema<IUser>({
-    firstName: { type: String, required: true },
-    lastName: { type: String, required: false },
-    email: {type: String, required: true, unique: true},
-    password: { type: String },
+    firstName: { type: String, required: true, trim: true },
+    lastName: { type: String, required: false, trim: false },
+    email: { type: String, required: true, unique: true, lowercase: true },
+    phoneNumber: { type: String, required: true, unique: true },
+    password: { type: String, default: null },
     profileImage: { type: String, required: true },
-    googleId: { type: String, sparse: true },
-    facebookId: {type: String, sparse: true},
-    authProviders: [{ type: String, enum: ['local', 'google', 'facebook'], required: true }]
+    gender: { type: String, enum: ['male', 'female', 'other'], required: true },
+    firebaseUid: { type: String, required: true, unique: true },
+    googleUid: { type: String, sparse: true, default: null },
+    facebookUid: { type: String, sparse: true, default: null },
+    providers: [{
+        type: String,
+        enum: ['local', 'google', 'facebook', 'phone'],
+        required: true
+    }]
 }, { timestamps: true });
 
 export const User = model<IUser>('User', userSchema);

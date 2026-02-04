@@ -2,29 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl_phone_field/phone_number.dart';
 import 'package:vynx/routes/app_routes.dart';
 import 'package:vynx/pages/signup/otp/otp_ctrl.dart';
 
 class SetupOnSignupCtrl extends GetxController {
   final data = Get.arguments;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
+  final RegExp _nameRegExp = RegExp(r"^[a-zA-Z\s]{2,50}$");
   final firstNameController = TextEditingController();
   final lastNameController = TextEditingController();
   final phoneController = TextEditingController();
   final nameFocusNode = FocusNode();
 
-  var isPageReady = false.obs; // Used only for smooth image decoding
+  var completePhoneNumber = "".obs;
+  var firstNameStr = "".obs;
+  var hasInteractedWithName = false.obs;
+  var hasInteractedWithPhone = false.obs;
   var isLoading = false.obs;
+  var isPageReady = false.obs;
+  var isPhoneEmpty = true.obs;
+  var isPhoneValid = false.obs;
+  var phoneLength = 0.obs;
+  var selectedDefaultImage = "".obs;
+  var selectedGender = "male".obs;
   var selectedImagePath = "".obs;
   var socialImageUrl = "".obs;
-  var selectedGender = "male".obs;
-  var selectedDefaultImage = "".obs;
-
-  var isPhoneValid = false.obs;
-  var completePhoneNumber = "".obs;
-  var phoneLength = 0.obs;
-  var hasInteractedWithName = false.obs;
 
   final ImagePicker _picker = ImagePicker();
   String _verificationId = "";
@@ -36,13 +39,67 @@ class SetupOnSignupCtrl extends GetxController {
     firstNameController.text = data?['firstName'] ?? "";
     lastNameController.text = data?['lastName'] ?? "";
 
-    // We keep a small delay for images only to ensure the transition is smooth
+    firstNameStr.value = firstNameController.text;
+
+    if (firstNameController.text.isNotEmpty) {
+      hasInteractedWithName.value = true;
+    }
+
+    firstNameController.addListener(() {
+      firstNameStr.value = firstNameController.text;
+      if (firstNameController.text.isNotEmpty) {
+        hasInteractedWithName.value = true;
+      }
+      update();
+    });
+
     Future.delayed(const Duration(milliseconds: 300), () {
       isPageReady.value = true;
       _initializeImage();
     });
     super.onInit();
   }
+
+  void onPhoneChanged(PhoneNumber phone) {
+    if (phone.number.isNotEmpty) {
+      hasInteractedWithPhone.value = true;
+    }
+    phoneLength.value = phone.number.length;
+    completePhoneNumber.value = phone.completeNumber;
+    try {
+      isPhoneValid.value = phone.isValidNumber();
+    } catch (_) {
+      isPhoneValid.value = false;
+    }
+
+    if (phone.number.isEmpty) {
+      isPhoneEmpty.value = true;
+    } else {
+      isPhoneEmpty.value = false;
+    }
+  }
+
+  bool get isNameValid {
+    final name = firstNameStr.value.trim();
+    return name.isNotEmpty && _nameRegExp.hasMatch(name);
+  }
+
+  bool get isSubmitEnabled => isNameValid && isPhoneValid.value;
+  String get nameErrorText {
+    final name = firstNameStr.value.trim();
+    if (name.isEmpty) return "First name is required";
+    if (name.length < 2) return "Name is too short";
+    if (!_nameRegExp.hasMatch(name)) {
+      return "Numbers and special characters are not allowed";
+    }
+    return "";
+  }
+
+  bool get showNameError => hasInteractedWithName.value && !isNameValid;
+  bool get showPhoneError => hasInteractedWithPhone.value && isPhoneEmpty.value;
+
+  String? get phoneCounterText =>
+      (phoneLength.value == 0 || isPhoneValid.value) ? "" : null;
 
   void _initializeImage() {
     String? incomingImage = data?['profileImage'] ?? data?['photoUrl'];
@@ -92,17 +149,9 @@ class SetupOnSignupCtrl extends GetxController {
     }
   }
 
-  String? get phoneCounterText =>
-      (phoneLength.value == 0 || isPhoneValid.value) ? "" : null;
-  bool get isNameValid => firstNameController.text.trim().isNotEmpty;
-  bool get isSubmitEnabled => isNameValid && isPhoneValid.value;
-
   Future<void> startPhoneVerification() async {
-    if (!isSubmitEnabled) {
-      hasInteractedWithName.value = true;
-      update();
-      return;
-    }
+    if (!isSubmitEnabled) return;
+
     isLoading.value = true;
     try {
       await _auth.verifyPhoneNumber(
