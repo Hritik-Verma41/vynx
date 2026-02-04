@@ -29,13 +29,17 @@ class SetupOnSignupPage extends StatelessWidget {
                   const SizedBox(height: 25),
 
                   Obx(
-                    () => Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _genderBtn(controller, "Male", "male"),
-                        const SizedBox(width: 15),
-                        _genderBtn(controller, "Female", "female"),
-                      ],
+                    () => Center(
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          _genderBtn(controller, 'Male', 'male'),
+                          _genderBtn(controller, 'Female', 'female'),
+                          _genderBtn(controller, 'Other', 'other'),
+                        ],
+                      ),
                     ),
                   ),
 
@@ -58,12 +62,11 @@ class SetupOnSignupPage extends StatelessWidget {
                   ),
                   Obx(
                     () => _buildWarning(
-                      show:
-                          controller.hasInteractedWithName.value &&
-                          !controller.isNameValid,
-                      text: "First name is required",
+                      show: controller.showNameError,
+                      text: controller.nameErrorText,
                     ),
                   ),
+
                   const SizedBox(height: 12),
                   _buildTextField(
                     hint: "Last Name (Optional)",
@@ -73,10 +76,16 @@ class SetupOnSignupPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 15),
 
-                  // Phone Field - Loader Removed, renders immediately
                   _buildPhoneInput(controller, isDark),
+                  Obx(
+                    () => _buildWarning(
+                      show: controller.showPhoneError,
+                      text: "Phone number is required",
+                    ),
+                  ),
 
                   const SizedBox(height: 40),
+
                   Obx(
                     () => _buildSubmitBtn(
                       label: "Finish & Create Account",
@@ -103,7 +112,6 @@ class SetupOnSignupPage extends StatelessWidget {
     );
   }
 
-  // --- Avatar Logic ---
   Widget _buildMainAvatar(
     SetupOnSignupCtrl ctrl,
     BuildContext context,
@@ -159,13 +167,7 @@ class SetupOnSignupPage extends StatelessWidget {
     final asset = ctrl.selectedDefaultImage.value.isEmpty
         ? "default-profile-male-1.png"
         : ctrl.selectedDefaultImage.value;
-    return Image.asset(
-      'assets/images/$asset',
-      fit: BoxFit.cover,
-      frameBuilder: (c, child, f, s) => f == null
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-          : child,
-    );
+    return Image.asset('assets/images/$asset', fit: BoxFit.cover);
   }
 
   Widget _buildAvatarList(SetupOnSignupCtrl ctrl) {
@@ -177,7 +179,6 @@ class SetupOnSignupPage extends StatelessWidget {
         itemCount: 5,
         itemBuilder: (context, index) {
           return Obx(() {
-            // The gender or selection might change, so we keep the logic inside Obx
             final imgName =
                 "default-profile-${ctrl.selectedGender.value}-${index + 1}.png";
             final isSelected = ctrl.selectedDefaultImage.value == imgName;
@@ -195,32 +196,10 @@ class SetupOnSignupPage extends StatelessWidget {
                     width: 2,
                   ),
                 ),
-                child: Center(
-                  child: AspectRatio(
-                    aspectRatio: 1.0,
-                    child: ClipOval(
-                      child: !ctrl.isPageReady.value
-                          ? const Padding(
-                              padding: EdgeInsets.all(15.0),
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.5,
-                              ),
-                            )
-                          : Image.asset(
-                              'assets/images/$imgName',
-                              fit: BoxFit.cover,
-                              frameBuilder: (c, child, frame, wasSync) {
-                                if (wasSync) return child;
-                                return frame == null
-                                    ? const Center(
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 1,
-                                        ),
-                                      )
-                                    : child;
-                              },
-                            ),
-                    ),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/$imgName',
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
@@ -231,90 +210,31 @@ class SetupOnSignupPage extends StatelessWidget {
     );
   }
 
-  // --- Phone Field renders immediately ---
   Widget _buildPhoneInput(SetupOnSignupCtrl ctrl, bool isDark) {
-    return Obx(
-      () => IntlPhoneField(
-        controller: ctrl.phoneController,
-        initialCountryCode: 'IN',
-        dropdownTextStyle: TextStyle(
-          color: isDark ? Colors.white : Colors.black,
-        ),
-        style: TextStyle(
-          color: isDark ? Colors.white : Colors.black,
-          fontSize: 14,
-        ),
-        decoration: InputDecoration(
-          hintText: 'Phone Number',
-          counterText: ctrl.phoneCounterText,
-          filled: true,
-          fillColor: isDark
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.black.withValues(alpha: 0.05),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide.none,
-          ),
-        ),
-        onChanged: (phone) {
-          ctrl.phoneLength.value = phone.number.length;
-          ctrl.completePhoneNumber.value = phone.completeNumber;
-          try {
-            ctrl.isPhoneValid.value = phone.isValidNumber();
-          } catch (_) {
-            ctrl.isPhoneValid.value = false;
-          }
-        },
+    return IntlPhoneField(
+      controller: ctrl.phoneController,
+      initialCountryCode: 'IN',
+      dropdownTextStyle: TextStyle(color: isDark ? Colors.white : Colors.black),
+      style: TextStyle(
+        color: isDark ? Colors.white : Colors.black,
+        fontSize: 14,
       ),
+      decoration: InputDecoration(
+        hintText: 'Phone Number',
+        counterText: ctrl.phoneCounterText,
+        filled: true,
+        fillColor: isDark
+            ? Colors.white.withValues(alpha: 0.1)
+            : Colors.black.withValues(alpha: 0.05),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      onChanged: (phone) => ctrl.onPhoneChanged(phone),
     );
   }
 
-  // --- Helpers ---
-  Widget _buildBackground(bool isDark) => Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: isDark
-            ? [const Color(0xFF1A0B2E), const Color(0xFF09040F)]
-            : [const Color(0xFFF3E5F5), Colors.white],
-      ),
-    ),
-  );
-  Widget _buildHeader(bool isDark) => Column(
-    children: [
-      Center(
-        child: Text(
-          "Complete Your Profile",
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black,
-          ),
-        ),
-      ),
-      const SizedBox(height: 5),
-      Text(
-        "Set up your identity",
-        style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
-      ),
-    ],
-  );
-  Widget _genderBtn(SetupOnSignupCtrl ctrl, String label, String val) =>
-      ElevatedButton(
-        onPressed: () => ctrl.setGender(val),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: ctrl.selectedGender.value == val
-              ? Colors.purple
-              : Colors.grey.withValues(alpha: 0.1),
-          foregroundColor: ctrl.selectedGender.value == val
-              ? Colors.white
-              : Colors.grey,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(label),
-      );
   Widget _buildTextField({
     required String hint,
     required IconData icon,
@@ -338,6 +258,7 @@ class SetupOnSignupPage extends StatelessWidget {
       ),
     ),
   );
+
   Widget _buildSubmitBtn({
     required String label,
     required VoidCallback? onPressed,
@@ -369,15 +290,70 @@ class SetupOnSignupPage extends StatelessWidget {
       ),
     ),
   );
-  Widget _buildWarning({required bool show, required String text}) => show
-      ? Padding(
-          padding: const EdgeInsets.only(left: 10, top: 5),
-          child: Text(
-            text,
-            style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+
+  Widget _buildWarning({required bool show, required String text}) =>
+      AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: show ? 25 : 0,
+        child: show
+            ? Padding(
+                padding: const EdgeInsets.only(left: 10, top: 5),
+                child: Text(
+                  text,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                ),
+              )
+            : const SizedBox.shrink(),
+      );
+
+  Widget _buildBackground(bool isDark) => Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: isDark
+            ? [const Color(0xFF1A0B2E), const Color(0xFF09040F)]
+            : [const Color(0xFFF3E5F5), Colors.white],
+      ),
+    ),
+  );
+
+  Widget _buildHeader(bool isDark) => Column(
+    children: [
+      Center(
+        child: Text(
+          "Complete Your Profile",
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black,
           ),
-        )
-      : const SizedBox.shrink();
+        ),
+      ),
+      const SizedBox(height: 5),
+      Text(
+        "Set up your identity",
+        style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
+      ),
+    ],
+  );
+
+  Widget _genderBtn(SetupOnSignupCtrl ctrl, String label, String val) =>
+      ElevatedButton(
+        onPressed: () => ctrl.setGender(val),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: ctrl.selectedGender.value == val
+              ? Colors.purple
+              : Colors.grey.withValues(alpha: 0.1),
+          foregroundColor: ctrl.selectedGender.value == val
+              ? Colors.white
+              : Colors.grey,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(label),
+      );
+
   Widget _subText(String t, bool dark) => Text(
     t,
     style: TextStyle(
@@ -396,6 +372,7 @@ class SetupOnSignupPage extends StatelessWidget {
     color: Colors.black54,
     child: const Center(child: CircularProgressIndicator(color: Colors.purple)),
   );
+
   void _showPickerSheet(
     BuildContext context,
     SetupOnSignupCtrl ctrl,

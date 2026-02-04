@@ -7,13 +7,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dio/dio.dart';
 import 'package:vynx/pages/signup/setup_on_signup/setup_on_signup_ctrl.dart';
 import 'package:vynx/services/api_service.dart';
-import 'package:vynx/services/cloudinary_service.dart'; // Import your new service
+import 'package:vynx/services/cloudinary_service.dart';
 import 'package:vynx/routes/app_routes.dart';
 
 class OtpCtrl extends GetxController {
   final setupCtrl = Get.find<SetupOnSignupCtrl>();
-  final _cloudinary =
-      Get.find<CloudinaryService>(); // Access the global service
+  final _cloudinary = Get.find<CloudinaryService>();
   final otpController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final Dio _dio = Get.find<ApiService>().dio;
@@ -79,15 +78,12 @@ class OtpCtrl extends GetxController {
 
   Future<void> completeWithCredential(PhoneAuthCredential credential) async {
     try {
-      // 1. Firebase Sign-in
       UserCredential userCred = await _auth.signInWithCredential(credential);
       String? uid = userCred.user?.uid;
 
       if (uid != null) {
-        // 2. Upload Image and Call Backend
         await _callBackendApi(uid);
 
-        // 3. Success
         Get.offAllNamed(Routes.chat);
       }
     } catch (e) {
@@ -100,10 +96,7 @@ class OtpCtrl extends GetxController {
     }
   }
 
-  // --- Image Handling & API Flow ---
-
   Future<void> _callBackendApi(String firebaseUid) async {
-    // 1. Get the Cloudinary URL using our specialized service
     String profileImageUrl = await _getCloudinaryUrl();
 
     final payload = {
@@ -111,7 +104,7 @@ class OtpCtrl extends GetxController {
       'lastName': setupCtrl.lastNameController.text.trim(),
       'email': setupCtrl.data?['email'],
       'phoneNumber': setupCtrl.completePhoneNumber.value,
-      'profileImage': profileImageUrl, // Sending URL instead of massive Base64
+      'profileImage': profileImageUrl,
       'gender': setupCtrl.selectedGender.value,
       'firebaseUid': firebaseUid,
       'password': setupCtrl.data?['password'],
@@ -130,7 +123,6 @@ class OtpCtrl extends GetxController {
 
   Future<String> _getCloudinaryUrl() async {
     try {
-      // Priority 1: Picked from Gallery/Camera
       if (setupCtrl.selectedImagePath.value.isNotEmpty) {
         return await _cloudinary.uploadImage(
               filePath: setupCtrl.selectedImagePath.value,
@@ -138,7 +130,6 @@ class OtpCtrl extends GetxController {
             "";
       }
 
-      // Priority 2: Social Photo URL
       if (setupCtrl.socialImageUrl.value.isNotEmpty) {
         return await _cloudinary.uploadImage(
               networkUrl: setupCtrl.socialImageUrl.value,
@@ -146,7 +137,6 @@ class OtpCtrl extends GetxController {
             "";
       }
 
-      // Priority 3: Default App Asset
       String assetName = setupCtrl.selectedDefaultImage.value;
       if (assetName.isEmpty) assetName = "default-profile-male-1.png";
 
