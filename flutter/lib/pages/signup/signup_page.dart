@@ -23,7 +23,6 @@ class _SignUpPageState extends State<SignUpPage> {
     controller.confirmPasswordController.addListener(() => setState(() {}));
   }
 
-  // New Name Error Getter
   String? get _nameError {
     if (controller.hasInteractedWithName.value &&
         controller.nameController.text.trim().isEmpty) {
@@ -90,7 +89,6 @@ class _SignUpPageState extends State<SignUpPage> {
                       _buildLogo(isDark),
                       const SizedBox(height: 25),
 
-                      // Full Name Field with Reactive Error
                       GetBuilder<SignupCtrl>(
                         builder: (ctrl) => _buildField(
                           hint: 'Full Name',
@@ -156,8 +154,6 @@ class _SignUpPageState extends State<SignUpPage> {
       ),
     );
   }
-
-  // --- UI Helpers ---
 
   Widget _buildBackground(bool isDark) {
     return Container(
