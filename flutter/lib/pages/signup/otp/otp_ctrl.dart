@@ -83,16 +83,20 @@ class OtpCtrl extends GetxController {
 
       if (uid != null) {
         await _callBackendApi(uid);
-
         Get.offAllNamed(Routes.chat);
       }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'invalid-verification-code') {
+        otpError.value = "Invalid OTP. Please check and try again.";
+      } else {
+        otpError.value = "Authentication failed: ${e.message}";
+      }
+      log("Firebase Auth Error: ${e.code}");
     } catch (e) {
-      log("Auth/Backend Flow Error: $e");
+      log("Backend Flow Error: $e");
       otpError.value = "Registration failed. Please try again.";
     } finally {
-      if (Get.currentRoute == Routes.otpPage) {
-        setupCtrl.isLoading.value = false;
-      }
+      setupCtrl.isLoading.value = false;
     }
   }
 
