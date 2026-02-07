@@ -25,7 +25,7 @@ class ApiService extends GetxService {
       ),
     );
 
-    void _handleLogoutConflict() {
+    void handleLogoutConflict() {
       Get.find<TokenService>().clearTokens();
       Get.dialog(
         VynxAlertPopup(
@@ -38,7 +38,7 @@ class ApiService extends GetxService {
       );
     }
 
-    Future<void> _retryWithRefresh(
+    Future<void> retryWithRefresh(
       DioException e,
       ErrorInterceptorHandler handler,
     ) async {
@@ -56,7 +56,7 @@ class ApiService extends GetxService {
           return handler.resolve(retryResponse);
         }
       } catch (err) {
-        _handleLogoutConflict();
+        handleLogoutConflict();
       }
     }
 
@@ -84,11 +84,11 @@ class ApiService extends GetxService {
         },
         onError: (DioException e, handler) {
           if (e.response?.statusCode == 401) {
-            _retryWithRefresh(e, handler);
+            retryWithRefresh(e, handler);
             return;
           }
           if (e.response?.statusCode == 403) {
-            _handleLogoutConflict();
+            handleLogoutConflict();
             return;
           }
           return handler.next(e);
