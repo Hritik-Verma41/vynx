@@ -37,10 +37,8 @@ class VynxHubPage extends StatelessWidget {
       bottomNavigationBar: Obx(
         () => Theme(
           data: Theme.of(context).copyWith(
-            // --- DISABLE SPLASH HERE ---
             splashColor: Colors.transparent,
             highlightColor: Colors.transparent,
-            // ---------------------------
             canvasColor: isDark ? const Color(0xFF0F0816) : Colors.white,
           ),
           child: Container(

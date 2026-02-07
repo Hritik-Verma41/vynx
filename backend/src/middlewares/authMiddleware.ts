@@ -1,9 +1,14 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from 'jsonwebtoken';
+import mongoose from "mongoose";
 
-import { User } from "../models/User";
+import { IUser, User } from "../models/User";
 
-export const protect = async (req: Request, res: Response, next: NextFunction) => {
+interface AuthRequest extends Request {
+    user?: mongoose.Document<unknown, any, IUser> & IUser;
+}
+
+export const protect = async (req: AuthRequest, res: Response, next: NextFunction) => {
     let token;
 
     if (req.headers.authorization && req.headers.authorization?.startsWith("Bearer")) {
@@ -21,10 +26,16 @@ export const protect = async (req: Request, res: Response, next: NextFunction) =
             req.user = user;
             next();
         } catch (error) {
-            console.log("Auth Middleware Error: ", error);
+            if (error instanceof jwt.TokenExpiredError) {
+                return res.status(401).json({
+                    success: false,
+                    code: "TOKEN_EXPIRED",
+                    message: "Token expired"
+                });
+            }
             return res.status(401).json({
                 success: false,
-                message: "Not authorized, token failed."
+                message: "Token failed"
             });
         }
     }

@@ -2,17 +2,21 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
+import 'package:get/get.dart' hide Response;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dio/dio.dart';
+import 'package:vynx/controllers/user_controller.dart';
 import 'package:vynx/pages/signup/setup_on_signup/setup_on_signup_ctrl.dart';
 import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/cloudinary_service.dart';
 import 'package:vynx/routes/app_routes.dart';
+import 'package:vynx/services/token_service.dart';
 
 class OtpCtrl extends GetxController {
   final setupCtrl = Get.find<SetupOnSignupCtrl>();
   final _cloudinary = Get.find<CloudinaryService>();
+  final tokenService = Get.find<TokenService>();
+  final userCtrl = Get.put(UserController());
   final otpController = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final Dio _dio = Get.find<ApiService>().dio;
@@ -82,8 +86,24 @@ class OtpCtrl extends GetxController {
       String? uid = userCred.user?.uid;
 
       if (uid != null) {
-        await _callBackendApi(uid);
-        Get.offAllNamed(Routes.vynxhub);
+        final response = await _callBackendApi(uid);
+
+        if (response != null &&
+            (response.statusCode == 200 || response.statusCode == 201)) {
+          final access = response.headers
+              .value('Authorization')
+              ?.replaceAll('Bearer ', '');
+          final refresh = response.headers.value('x-refresh-token');
+
+          if (access != null && refresh != null) {
+            await tokenService.saveTokens(access, refresh);
+            await userCtrl.fetchProfile();
+
+            Get.offAllNamed(Routes.vynxhub);
+          } else {
+            log("Signup success but tokens missing in headers");
+          }
+        }
       }
     } on FirebaseAuthException catch (e) {
       otpError.value = e.code == 'invalid-verification-code'
@@ -106,7 +126,7 @@ class OtpCtrl extends GetxController {
     }
   }
 
-  Future<void> _callBackendApi(String firebaseUid) async {
+  Future<Response?> _callBackendApi(String firebaseUid) async {
     final cloudinaryData = await _getCloudinaryData();
 
     if (cloudinaryData == null) {
@@ -131,7 +151,7 @@ class OtpCtrl extends GetxController {
     };
 
     try {
-      await _dio.post('/auth/sign-up', data: payload);
+      return await _dio.post('/auth/sign-up', data: payload);
     } on DioException catch (e) {
       final cleanMessage = e.response?.data['message'] ?? "Signup failed";
 

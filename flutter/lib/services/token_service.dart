@@ -1,26 +1,24 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
+import 'package:vynx/services/storage_service.dart';
 
 class TokenService extends GetxService {
-  final _storage = const FlutterSecureStorage();
-
-  static const _accessKey = 'access_token';
-  static const _refreshKey = 'refresh_token';
+  final _storage = Get.find<StorageService>();
 
   bool isUserLoggedIn = false;
 
   Future<void> saveTokens(String access, String refresh) async {
     isUserLoggedIn = true;
-    await _storage.write(key: _accessKey, value: access);
-    await _storage.write(key: _refreshKey, value: refresh);
+    await _storage.writeSecure(StorageService.accessKey, access);
+    await _storage.writeSecure(StorageService.refreshKey, refresh);
   }
 
-  Future<String?> getAccessToken() => _storage.read(key: _accessKey);
+  Future<String?> getAccessToken() =>
+      _storage.readSecure(StorageService.accessKey);
   Future<String?> getRefreshToken() async {
-    String? token = await _storage.read(key: 'refresh_token');
+    String? token = await _storage.readSecure(StorageService.refreshKey);
     isUserLoggedIn = token != null;
     return token;
   }
 
-  Future<void> clearTokens() async => await _storage.deleteAll();
+  Future<void> clearTokens() async => await _storage.clearAll();
 }

@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 
 import { IUser, User } from "../models/User";
 import { generateTokens } from "../utils/generateToken";
+import { protect } from "../middlewares/authMiddleware";
 
 const authRouter: Router = Router();
 
@@ -243,6 +244,28 @@ authRouter.post('/refresh-token', async (req: Request, res: Response) => {
             return res.status(403).json({ success: false, message: "Session expired. Please login again." });
         }
 
+        res.status(500).json({
+            success: false,
+            message: "Internal Server Error"
+        });
+    }
+});
+
+authRouter.get('/profile', protect, async (req: Request, res: Response) => {
+    try {
+        const userRequest = req as any;
+        if (!userRequest.user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        res.json({
+            success: true,
+            user: userRequest.user
+        });
+    } catch (error) {
         res.status(500).json({
             success: false,
             message: "Internal Server Error"

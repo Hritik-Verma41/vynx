@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:vynx/controllers/user_controller.dart';
+import 'package:vynx/widgets/vynx_alert_popup.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -9,7 +12,6 @@ class SettingsPage extends StatelessWidget {
 
     return CustomScrollView(
       slivers: [
-        // Premium AppBar
         SliverAppBar(
           expandedHeight: 120,
           backgroundColor: Colors.transparent,
@@ -27,7 +29,6 @@ class SettingsPage extends StatelessWidget {
           ),
         ),
 
-        // Settings Content
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -56,7 +57,7 @@ class SettingsPage extends StatelessWidget {
                 ], isDark),
                 const SizedBox(height: 40),
                 _buildLogoutButton(isDark),
-                const SizedBox(height: 100), // Space for BottomNav
+                const SizedBox(height: 100),
               ],
             ),
           ),
@@ -66,59 +67,80 @@ class SettingsPage extends StatelessWidget {
   }
 
   Widget _buildProfileCard(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.black.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
+    final userCtrl = Get.put(UserController());
+
+    return Obx(() {
+      final u = userCtrl.user.value;
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
           color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.black.withValues(alpha: 0.05),
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.black.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.05),
+          ),
         ),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 35,
-            backgroundColor: Colors.purple.withValues(alpha: 0.2),
-            child: const Icon(Icons.person, size: 40, color: Colors.purple),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Hritik Verma",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                ),
-                Text(
-                  "Available",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: isDark ? Colors.white60 : Colors.black54,
-                  ),
-                ),
-              ],
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 35,
+              backgroundColor: Colors.purple.withValues(alpha: 0.2),
+              backgroundImage:
+                  (u?.profileImage != null && u!.profileImage!.isNotEmpty)
+                  ? NetworkImage(u.profileImage!)
+                  : null,
+              child: (u?.profileImage == null || u!.profileImage!.isEmpty)
+                  ? const Icon(Icons.person, size: 35, color: Colors.purple)
+                  : null,
             ),
-          ),
-          IconButton(
-            onPressed: () {},
-            icon: Icon(
-              Icons.qr_code,
-              color: isDark ? Colors.purple[200] : Colors.purple[700],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    u?.fullName ?? "Loading...",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  Text(
+                    u?.status ?? "Available",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? Colors.white60 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
+            if (userCtrl.isLoading.value)
+              const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.purple,
+                ),
+              ),
+            IconButton(
+              onPressed: () {},
+              icon: Icon(
+                Icons.qr_code,
+                color: isDark ? Colors.purple[200] : Colors.purple[700],
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildSettingsGroup(String title, List<Widget> tiles, bool isDark) {
@@ -170,9 +192,23 @@ class SettingsPage extends StatelessWidget {
   }
 
   Widget _buildLogoutButton(bool isDark) {
+    final userCtrl = Get.find<UserController>();
+
     return TextButton.icon(
       onPressed: () {
-        // Handle Logout Logic
+        showDialog(
+          context: Get.context!,
+          builder: (context) => VynxAlertPopup(
+            title: "Logout",
+            message: "Are you sure you want to log out?",
+            confirmBtnText: 'Logout',
+            enableCancel: true,
+            onConfirm: () {
+              Navigator.pop(context);
+              userCtrl.logout();
+            },
+          ),
+        );
       },
       icon: const Icon(Icons.logout, color: Colors.redAccent),
       label: const Text(

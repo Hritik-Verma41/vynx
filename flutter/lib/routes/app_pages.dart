@@ -9,19 +9,14 @@ import 'app_routes.dart';
 
 class AppPages {
   static final routes = [
-    // chats page
     GetPage(
       name: Routes.vynxhub,
       page: () => const VynxHubPage(),
       middlewares: [AuthMiddleware()],
     ),
-    // login page
     GetPage(name: Routes.login, page: () => const LoginPage()),
-    // otp page
-    GetPage(name: '/otp-page', page: () => const OtpPage()),
-    // setup on signup page
+    GetPage(name: Routes.otpPage, page: () => const OtpPage()),
     GetPage(name: Routes.setupOnSignUp, page: () => SetupOnSignupPage()),
-    // signup page
     GetPage(name: Routes.signup, page: () => const SignUpPage()),
   ];
 }

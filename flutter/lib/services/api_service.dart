@@ -40,6 +40,7 @@ class ApiService extends GetxService {
           title: "Session Conflict",
           message:
               "You have been logged in on another device. Please log in again to continue.",
+          confirmBtnText: 'Back to Login',
           onConfirm: () => Get.offAllNamed(Routes.login),
         ),
         barrierDismissible: false,
@@ -55,7 +56,7 @@ class ApiService extends GetxService {
 
       try {
         final refreshRes = await Dio().post(
-          "http://localhost:8000/api/auth/refresh-token",
+          "${_dio.options.baseUrl}/auth/refresh-token",
           data: {'refreshToken': refreshToken},
         );
 

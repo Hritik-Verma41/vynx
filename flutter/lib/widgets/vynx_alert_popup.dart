@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 
 class VynxAlertPopup extends StatelessWidget {
+  final String cancelBtnText;
+  final String confirmBtnText;
+  final bool enableCancel;
   final String title;
   final String message;
   final VoidCallback onConfirm;
 
   const VynxAlertPopup({
     super.key,
+    this.cancelBtnText = 'Cancel',
+    required this.confirmBtnText,
+    this.enableCancel = false,
     required this.title,
     required this.message,
     required this.onConfirm,
@@ -67,33 +73,60 @@ class VynxAlertPopup extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            Container(
-              width: double.infinity,
-              height: 48,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF8E24AA), Color(0xFF4A148C)],
-                ),
-              ),
-              child: ElevatedButton(
-                onPressed: onConfirm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            Row(
+              children: [
+                if (enableCancel) ...[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(
+                          color: Colors.redAccent.withValues(alpha: 0.5),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        cancelBtnText,
+                        style: TextStyle(fontSize: 15, color: Colors.redAccent),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF8E24AA), Color(0xFF4A148C)],
+                      ),
+                    ),
+                    child: ElevatedButton(
+                      onPressed: onConfirm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        confirmBtnText,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                child: const Text(
-                  "Back to Login",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              ],
             ),
           ],
         ),

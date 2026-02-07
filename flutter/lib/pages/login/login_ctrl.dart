@@ -1,13 +1,17 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:vynx/controllers/user_controller.dart';
 import 'package:vynx/routes/app_routes.dart';
 import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/auth_service.dart';
+import 'package:vynx/services/token_service.dart';
 
 class LoginCtrl extends GetxController {
   final AuthService _auth = Get.find<AuthService>();
   final Dio _dio = Get.find<ApiService>().dio;
+  final tokenServive = Get.find<TokenService>();
+  final userCtrl = Get.put(UserController());
 
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
@@ -28,8 +32,9 @@ class LoginCtrl extends GetxController {
     });
 
     passwordController.addListener(() {
-      if (passwordController.text.isNotEmpty)
+      if (passwordController.text.isNotEmpty) {
         hasInteractedWithPassword.value = true;
+      }
       if (serverError.value.isNotEmpty) serverError.value = "";
     });
   }
@@ -42,7 +47,16 @@ class LoginCtrl extends GetxController {
       final response = await _dio.post('/auth/login', data: payload);
 
       if (response.statusCode == 200) {
-        Get.offAllNamed(Routes.vynxhub);
+        final access = response.headers
+            .value('Authorization')
+            ?.replaceAll('Bearer ', '');
+        final refresh = response.headers.value('x-refresh-token');
+
+        if (access != null && refresh != null) {
+          tokenServive.saveTokens(access, refresh);
+          await userCtrl.fetchProfile();
+          Get.offAllNamed(Routes.vynxhub);
+        }
       }
     } on DioException catch (e) {
       serverError.value =
