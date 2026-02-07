@@ -3,7 +3,8 @@ import 'package:vynx/services/auth_timer_service.dart';
 
 class VynxHubController extends GetxController {
   var currentIndex = 0.obs;
-  final _authTimer = Get.put(AuthTimerService());
+
+  final AuthTimerService _authTimer = Get.put(AuthTimerService());
 
   @override
   void onInit() {

@@ -4,7 +4,7 @@ import 'package:vynx/pages/login/login_page.dart';
 import 'package:vynx/pages/signup/otp/otp_page.dart';
 import 'package:vynx/pages/signup/setup_on_signup/setup_on_signup_page.dart';
 import 'package:vynx/pages/signup/signup_page.dart';
-import 'package:vynx/pages/vynx_hub_page/vynx_hub_page.dart';
+import 'package:vynx/pages/vynx_hub/vynx_hub_page.dart';
 import 'app_routes.dart';
 
 class AppPages {
