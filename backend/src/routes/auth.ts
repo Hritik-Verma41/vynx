@@ -31,7 +31,8 @@ authRouter.post('/sign-up', async (req: Request, res: Response) => {
     try {
         const {
             firebaseUid, email, phoneNumber, firstName,
-            lastName, profileImage, gender, providers, password
+            lastName, profileImage, gender, providers, password,
+            googleUid, facebookUid
         } = req.body;
 
         const requiredFields = ['firebaseUid', 'email', 'phoneNumber', 'firstName', 'profileImage', 'gender'];
@@ -78,6 +79,8 @@ authRouter.post('/sign-up', async (req: Request, res: Response) => {
             profileImage,
             gender,
             password: hashedPassword,
+            googleUid: googleUid || null,
+            facebookUid: facebookUid || null,
             providers: providers || ['phone']
         });
 
@@ -159,6 +162,41 @@ authRouter.post('/login', async (req: Request, res: Response) => {
         return await sendAuthResponse(user, res);
     } catch (error) {
         console.log(`Login error: ${error}`);
+        res.status(500).json({
+            success: false,
+            message: "Internal Server Error"
+        });
+    }
+});
+
+authRouter.post('/logout', async (req: Request, res: Response) => {
+    try {
+        const { refreshToken } = req.body;
+        
+        if(!refreshToken) {
+            return res.status(400).json({
+                success: false,
+                message: "Token required."
+            });
+        }
+
+        const user = await User.findOneAndUpdate(
+            { refreshToken },
+            { refreshToken: null }
+        );
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "Session not found."
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "Logged out successfully."
+        });
+    } catch (error) {
         res.status(500).json({
             success: false,
             message: "Internal Server Error"
