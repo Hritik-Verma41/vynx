@@ -173,8 +173,8 @@ authRouter.post('/login', async (req: Request, res: Response) => {
 authRouter.post('/logout', async (req: Request, res: Response) => {
     try {
         const { refreshToken } = req.body;
-        
-        if(!refreshToken) {
+
+        if (!refreshToken) {
             return res.status(400).json({
                 success: false,
                 message: "Token required."
