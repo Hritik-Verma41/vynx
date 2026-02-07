@@ -1,5 +1,7 @@
 import 'dart:developer';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:vynx/routes/app_routes.dart';
@@ -18,11 +20,17 @@ class ApiService extends GetxService {
   }
 
   void _initalizeDio() {
+    String baseUrl = "http://localhost:8000/api";
+
+    if (!kIsWeb) {
+      if (Platform.isAndroid) {
+        baseUrl = "http://10.0.2.2:8000/api";
+      } else if (Platform.isIOS) {
+        baseUrl = "http://localhost:8000/api";
+      }
+    }
     _dio = Dio(
-      BaseOptions(
-        baseUrl: "http://localhost:8000/api",
-        connectTimeout: Duration(seconds: 10),
-      ),
+      BaseOptions(baseUrl: baseUrl, connectTimeout: Duration(seconds: 10)),
     );
 
     void handleLogoutConflict() {
