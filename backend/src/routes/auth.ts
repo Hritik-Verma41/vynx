@@ -14,6 +14,9 @@ const sendAuthResponse = async (user: Document & IUser, res: Response, statusCod
     user.refreshToken = refreshToken;
     await user.save();
 
+    res.set('Authorization', `Bearer ${accessToken}`);
+    res.set('x-refresh-token', refreshToken);
+
     return res.status(statusCode).json({
         success: true,
         user: {
@@ -21,9 +24,7 @@ const sendAuthResponse = async (user: Document & IUser, res: Response, statusCod
             firstName: user.firstName,
             lastName: user.lastName,
             profileImage: user.profileImage
-        },
-        accessToken,
-        refreshToken
+        }
     });
 };
 
@@ -231,11 +232,10 @@ authRouter.post('/refresh-token', async (req: Request, res: Response) => {
         user.refreshToken = tokens.refreshToken;
         await user.save();
 
-        res.json({
-            success: true,
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken
-        });
+        res.set('Authorization', `Bearer ${tokens.accessToken}`);
+        res.set('x-refresh-token', tokens.refreshToken);
+
+        res.json({ success: true });
     } catch (error: any) {
         console.log(`Refresh-Token error: ${error.message}`);
 
