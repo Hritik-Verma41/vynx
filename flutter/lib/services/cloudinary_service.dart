@@ -2,6 +2,8 @@ import 'dart:developer';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart' hide FormData, MultipartFile;
+import 'package:vynx/services/api_service.dart';
 
 class CloudinaryService {
   static const String _cloudName = "dvltyb4hb";
@@ -9,9 +11,9 @@ class CloudinaryService {
   static const String _baseUrl =
       "https://api.cloudinary.com/v1_1/$_cloudName/image/upload";
 
-  final Dio _dio = Dio();
+  final Dio _cloudinaryDio = Dio();
 
-  Future<String?> uploadImage({
+  Future<Map<String, String>?> uploadImage({
     String? filePath,
     String? networkUrl,
     Uint8List? assetBytes,
@@ -39,14 +41,34 @@ class CloudinaryService {
         );
       }
 
-      final respone = await _dio.post(_baseUrl, data: formData);
+      final response = await _cloudinaryDio.post(_baseUrl, data: formData);
 
-      if (respone.statusCode == 200) {
-        return respone.data['secure_url'];
+      if (response.statusCode == 200) {
+        return {
+          'url': response.data['secure_url'] as String,
+          'public_id': response.data['public_id'] as String,
+        };
       }
     } catch (e) {
       log('Cloudinary Service Error: $e');
     }
     return null;
+  }
+
+  Future<void> deleteImage(String publicId) async {
+    try {
+      log("🧹 Cleaning up Cloudinary image: $publicId");
+
+      final backendDio = Get.find<ApiService>().dio;
+
+      await backendDio.post(
+        '/utils/delete-image',
+        data: {'publicId': publicId},
+      );
+
+      log("✅ Cleanup request sent successfully");
+    } catch (e) {
+      log('Cloudinary Delete Error: $e');
+    }
   }
 }

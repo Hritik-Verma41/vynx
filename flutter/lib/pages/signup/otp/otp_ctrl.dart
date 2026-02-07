@@ -83,25 +83,38 @@ class OtpCtrl extends GetxController {
 
       if (uid != null) {
         await _callBackendApi(uid);
-        Get.offAllNamed(Routes.chat);
+        Get.offAllNamed(Routes.vynxhub);
       }
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'invalid-verification-code') {
-        otpError.value = "Invalid OTP. Please check and try again.";
-      } else {
-        otpError.value = "Authentication failed: ${e.message}";
-      }
-      log("Firebase Auth Error: ${e.code}");
+      otpError.value = e.code == 'invalid-verification-code'
+          ? "Invalid OTP. Please check and try again."
+          : "Auth error: ${e.message}";
     } catch (e) {
-      log("Backend Flow Error: $e");
-      otpError.value = "Registration failed. Please try again.";
+      String errorMessage = "Registration failed. Please try again.";
+
+      if (e is DioException) {
+        errorMessage = e.response?.data['message'] ?? "Backend error occurred.";
+        log("Backend Flow Error: $errorMessage");
+      } else {
+        errorMessage = e.toString();
+        log("System Error: $errorMessage");
+      }
+
+      otpError.value = errorMessage;
     } finally {
       setupCtrl.isLoading.value = false;
     }
   }
 
   Future<void> _callBackendApi(String firebaseUid) async {
-    String profileImageUrl = await _getCloudinaryUrl();
+    final cloudinaryData = await _getCloudinaryData();
+
+    if (cloudinaryData == null) {
+      throw Exception("Failed to upload profile image.");
+    }
+
+    final String profileImageUrl = cloudinaryData['url']!;
+    final String publicId = cloudinaryData['public_id']!;
 
     final payload = {
       'firstName': setupCtrl.firstNameController.text.trim(),
@@ -120,39 +133,41 @@ class OtpCtrl extends GetxController {
     try {
       await _dio.post('/auth/sign-up', data: payload);
     } on DioException catch (e) {
-      log("Backend Dio Error: ${e.message}");
+      final cleanMessage = e.response?.data['message'] ?? "Signup failed";
+
+      log("Registration Blocked: $cleanMessage");
+
+      await _cloudinary.deleteImage(publicId);
       rethrow;
     }
   }
 
-  Future<String> _getCloudinaryUrl() async {
+  Future<Map<String, String>?> _getCloudinaryData() async {
     try {
       if (setupCtrl.selectedImagePath.value.isNotEmpty) {
         return await _cloudinary.uploadImage(
-              filePath: setupCtrl.selectedImagePath.value,
-            ) ??
-            "";
+          filePath: setupCtrl.selectedImagePath.value,
+        );
       }
 
       if (setupCtrl.socialImageUrl.value.isNotEmpty) {
         return await _cloudinary.uploadImage(
-              networkUrl: setupCtrl.socialImageUrl.value,
-            ) ??
-            "";
+          networkUrl: setupCtrl.socialImageUrl.value,
+        );
       }
 
-      String assetName = setupCtrl.selectedDefaultImage.value;
-      if (assetName.isEmpty) assetName = "default-profile-male-1.png";
+      String assetName = setupCtrl.selectedDefaultImage.value.isEmpty
+          ? "default-profile-male-1.png"
+          : setupCtrl.selectedDefaultImage.value;
 
       final byteData = await rootBundle.load('assets/images/$assetName');
       return await _cloudinary.uploadImage(
-            assetBytes: byteData.buffer.asUint8List(),
-            assetName: assetName,
-          ) ??
-          "";
+        assetBytes: byteData.buffer.asUint8List(),
+        assetName: assetName,
+      );
     } catch (e) {
-      log("Error during Cloudinary step: $e");
-      return "";
+      log("Cloudinary Step Error: $e");
+      return null;
     }
   }
 
