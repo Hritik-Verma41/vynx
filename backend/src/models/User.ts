@@ -1,6 +1,6 @@
 import { model, Schema } from 'mongoose';
 
-interface IUser {
+export interface IUser {
     firstName: string;
     lastName: string;
     email: string;
@@ -11,7 +11,8 @@ interface IUser {
     firebaseUid: string;
     googleUid?: string;
     facebookUid?: string;
-    providers: ('local' | 'google' | 'facegook' | 'phone')[];
+    providers: ('local' | 'google' | 'facebook' | 'phone')[];
+    refreshToken?: string | null;
 }
 
 const userSchema = new Schema<IUser>({
@@ -29,7 +30,8 @@ const userSchema = new Schema<IUser>({
         type: String,
         enum: ['local', 'google', 'facebook', 'phone'],
         required: true
-    }]
+    }],
+    refreshToken: { type: String, default: null }
 }, { timestamps: true });
 
 export const User = model<IUser>('User', userSchema);
