@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:vynx/controllers/user_controller.dart';
 import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/auth_service.dart';
@@ -14,8 +15,12 @@ import './routes/app_routes.dart';
 Future<void> startApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await GetStorage.init();
 
   await Get.putAsync(() async => StorageService());
+  final storage = Get.find<StorageService>();
+  Get.changeThemeMode(storage.getThemeMode());
+
   final tokenService = Get.put(TokenService());
   String? refreshToken = await tokenService.getRefreshToken();
   await Get.putAsync(() async => ApiService());
@@ -34,6 +39,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final storage = Get.find<StorageService>();
+
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Vynx',
@@ -50,7 +57,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      themeMode: ThemeMode.system,
+      themeMode: storage.getThemeMode(),
       initialRoute: initalRoute,
       getPages: AppPages.routes,
     );
