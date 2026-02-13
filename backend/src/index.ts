@@ -12,7 +12,10 @@ const PORT = process.env.PORT || 8000;
 
 connectDB();
 
-app.use(cors());
+app.use(cors({
+    origin: '*',
+    exposedHeaders: ['Authorization', 'x-refresh-token']
+}));
 app.use(express.json({ limit: '50mb' }));
 
 app.use('/api', routesRouter);
@@ -22,5 +25,5 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`⚡️[server]: Vynx server is running at http://localhost:${PORT}`)
+    console.log(`⚡️[server]: Vynx server started running at http://localhost:${PORT}`)
 });
