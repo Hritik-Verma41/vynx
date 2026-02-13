@@ -1,9 +1,8 @@
 import 'dart:developer';
-import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
+import 'package:vynx/config/env_config.dart';
 import 'package:vynx/routes/app_routes.dart';
 import 'package:vynx/services/token_service.dart';
 import 'package:vynx/widgets/vynx_alert_popup.dart';
@@ -20,15 +19,8 @@ class ApiService extends GetxService {
   }
 
   void _initalizeDio() {
-    String baseUrl = "http://localhost:8000/api";
+    String baseUrl = EnvConfig.instance.baseUrl;
 
-    if (!kIsWeb) {
-      if (Platform.isAndroid) {
-        baseUrl = "http://10.0.2.2:8000/api";
-      } else if (Platform.isIOS) {
-        baseUrl = "http://localhost:8000/api";
-      }
-    }
     _dio = Dio(
       BaseOptions(baseUrl: baseUrl, connectTimeout: Duration(seconds: 10)),
     );

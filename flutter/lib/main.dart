@@ -11,7 +11,7 @@ import 'package:vynx/services/token_service.dart';
 import './routes/app_pages.dart';
 import './routes/app_routes.dart';
 
-void main() async {
+Future<void> startApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
