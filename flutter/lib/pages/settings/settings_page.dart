@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vynx/controllers/user_controller.dart';
+import 'package:vynx/routes/app_routes.dart';
 import 'package:vynx/widgets/vynx_alert_popup.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -37,9 +38,24 @@ class SettingsPage extends StatelessWidget {
                 _buildProfileCard(isDark),
                 const SizedBox(height: 30),
                 _buildSettingsGroup("Account", [
-                  _settingsTile(Icons.person_outline, "Account Info", isDark),
-                  _settingsTile(Icons.privacy_tip_outlined, "Privacy", isDark),
-                  _settingsTile(Icons.security_outlined, "Security", isDark),
+                  _settingsTile(
+                    Icons.person_outline,
+                    "Account Info",
+                    isDark,
+                    onTap: () => Get.toNamed(Routes.settingsAccountInfo),
+                  ),
+                  _settingsTile(
+                    Icons.privacy_tip_outlined,
+                    "Privacy",
+                    isDark,
+                    onTap: () {},
+                  ),
+                  _settingsTile(
+                    Icons.security_outlined,
+                    "Security",
+                    isDark,
+                    onTap: () {},
+                  ),
                 ], isDark),
                 const SizedBox(height: 20),
                 _buildSettingsGroup("Preferences", [
@@ -47,12 +63,19 @@ class SettingsPage extends StatelessWidget {
                     Icons.notifications_none_outlined,
                     "Notifications",
                     isDark,
+                    onTap: () {},
                   ),
-                  _settingsTile(Icons.palette_outlined, "Appearance", isDark),
+                  _settingsTile(
+                    Icons.palette_outlined,
+                    "Appearance",
+                    isDark,
+                    onTap: () => Get.toNamed(Routes.settingsAppearance),
+                  ),
                   _settingsTile(
                     Icons.data_usage_outlined,
                     "Data Usage",
                     isDark,
+                    onTap: () {},
                   ),
                 ], isDark),
                 const SizedBox(height: 40),
@@ -172,7 +195,12 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _settingsTile(IconData icon, String title, bool isDark) {
+  Widget _settingsTile(
+    IconData icon,
+    String title,
+    bool isDark, {
+    GestureTapCallback? onTap,
+  }) {
     return ListTile(
       leading: Icon(
         icon,
@@ -187,7 +215,7 @@ class SettingsPage extends StatelessWidget {
         ),
       ),
       trailing: const Icon(Icons.chevron_right, size: 20, color: Colors.grey),
-      onTap: () {},
+      onTap: onTap,
     );
   }
 

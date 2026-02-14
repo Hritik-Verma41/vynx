@@ -55,6 +55,25 @@ class CloudinaryService {
     return null;
   }
 
+  String? getPublicIdFromUrl(String? url) {
+    if (url == null || !url.contains("res.cloudinary.com")) return null;
+    try {
+      final Uri uri = Uri.parse(url);
+      final List<String> segments = uri.pathSegments;
+      final int uploadIndex = segments.indexOf('upload');
+
+      if (uploadIndex != -1 && uploadIndex + 2 < segments.length) {
+        final String idWithExtension = segments
+            .sublist(uploadIndex + 2)
+            .join('/');
+        return idWithExtension.split('.').first;
+      }
+    } catch (e) {
+      log("Error parsing publicId: $e");
+    }
+    return null;
+  }
+
   Future<void> deleteImage(String publicId) async {
     try {
       log("🧹 Cleaning up Cloudinary image: $publicId");

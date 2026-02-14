@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:get/get.dart';
+import 'package:vynx/config/api_urls.dart';
 import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/token_service.dart';
 
@@ -25,7 +26,7 @@ class AuthTimerService extends GetxService {
       if (refreshToken == null) return;
 
       final response = await Get.find<ApiService>().dio.post(
-        "/auth/refresh-token",
+        ApiUrls.refreshToken,
         data: {'refreshToken': refreshToken},
       );
 

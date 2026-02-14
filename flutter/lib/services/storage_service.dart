@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -9,6 +10,7 @@ class StorageService extends GetxService {
   static const String userKey = 'user_cache';
   static const String accessKey = 'access_token';
   static const String refreshKey = 'refresh_token';
+  static const String themeKey = 'app_theme_mode';
 
   void writeCache(String key, dynamic value) => _cache.write(key, value);
   T? readCache<T>(String key) => _cache.read<T>(key);
@@ -22,5 +24,19 @@ class StorageService extends GetxService {
   Future<void> clearAll() async {
     await _cache.erase();
     await _secure.deleteAll();
+  }
+
+  void saveThemeMode(ThemeMode mode) {
+    int index = 0;
+    if (mode == ThemeMode.light) index = 1;
+    if (mode == ThemeMode.dark) index = 2;
+    _cache.write(themeKey, index);
+  }
+
+  ThemeMode getThemeMode() {
+    int? index = _cache.read<int>(themeKey);
+    if (index == 1) return ThemeMode.light;
+    if (index == 2) return ThemeMode.dark;
+    return ThemeMode.system;
   }
 }
