@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:vynx/config/api_urls.dart';
 import 'package:vynx/controllers/user_controller.dart';
 import 'package:vynx/routes/app_routes.dart';
 import 'package:vynx/services/api_service.dart';
@@ -44,7 +45,7 @@ class LoginCtrl extends GetxController {
       isLoading.value = true;
       serverError.value = "";
 
-      final response = await _dio.post('/auth/login', data: payload);
+      final response = await _dio.post(ApiUrls.authLogin, data: payload);
 
       if (response.statusCode == 200) {
         final access = response.headers

@@ -24,7 +24,10 @@ const sendAuthResponse = async (user: Document & IUser, res: Response, statusCod
             id: user._id,
             firstName: user.firstName,
             lastName: user.lastName,
-            profileImage: user.profileImage
+            profileImage: user.profileImage,
+            status: user.status,
+            gender: user.gender,
+            providers: user.providers
         }
     });
 };
@@ -80,6 +83,7 @@ authRouter.post('/sign-up', async (req: Request, res: Response) => {
             lastName,
             profileImage,
             gender,
+            status: 'Available',
             password: hashedPassword,
             googleUid: googleUid || null,
             facebookUid: facebookUid || null,

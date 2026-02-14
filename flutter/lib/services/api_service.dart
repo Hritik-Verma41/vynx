@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
+import 'package:vynx/config/api_urls.dart';
 import 'package:vynx/config/env_config.dart';
 import 'package:vynx/routes/app_routes.dart';
 import 'package:vynx/services/token_service.dart';
@@ -48,7 +49,7 @@ class ApiService extends GetxService {
 
       try {
         final refreshRes = await Dio().post(
-          "${_dio.options.baseUrl}/auth/refresh-token",
+          "${_dio.options.baseUrl}${ApiUrls.refreshToken}",
           data: {'refreshToken': refreshToken},
         );
 

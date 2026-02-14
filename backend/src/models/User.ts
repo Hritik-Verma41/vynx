@@ -8,6 +8,7 @@ export interface IUser {
     password?: string | null;
     profileImage: string;
     gender: 'male' | 'female' | 'other';
+    status: string,
     firebaseUid: string;
     googleUid?: string;
     facebookUid?: string;
@@ -23,6 +24,12 @@ const userSchema = new Schema<IUser>({
     password: { type: String, default: null },
     profileImage: { type: String, required: true },
     gender: { type: String, enum: ['male', 'female', 'other'], required: true },
+    status: {
+        type: String,
+        required: true,
+        default: 'Available',
+        trim: true
+    },
     firebaseUid: { type: String, required: true, unique: true },
     googleUid: { type: String, sparse: true, default: null },
     facebookUid: { type: String, sparse: true, default: null },

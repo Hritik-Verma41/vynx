@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import 'package:get/get.dart';
+import 'package:vynx/config/api_urls.dart';
 import 'package:vynx/models/user_model.dart';
 import 'package:vynx/routes/app_routes.dart';
 import 'package:vynx/services/api_service.dart';
@@ -31,7 +32,7 @@ class UserController extends GetxController {
   Future<void> fetchProfile() async {
     try {
       isLoading.value = true;
-      final response = await _dio.get('/auth/profile');
+      final response = await _dio.get(ApiUrls.authProfile);
 
       if (response.statusCode == 200 && response.data['user'] != null) {
         final fetchedUser = UserModel.fromJson(response.data['user']);

@@ -20,6 +20,7 @@ class AppearancePage extends StatelessWidget {
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         foregroundColor: isDark ? Colors.white : Colors.black,
       ),
       body: Container(

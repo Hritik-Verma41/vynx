@@ -42,7 +42,7 @@ class SettingsPage extends StatelessWidget {
                     Icons.person_outline,
                     "Account Info",
                     isDark,
-                    onTap: () {},
+                    onTap: () => Get.toNamed(Routes.settingsAccountInfo),
                   ),
                   _settingsTile(
                     Icons.privacy_tip_outlined,
