@@ -23,7 +23,6 @@ jobs:
             cd /home/ubuntu/apps/vynx/backend
             git fetch origin
             git reset --hard origin/production
-            cd backend
             npm install
             npm run build
             pm2 reload vynx-backend || pm2 start dist/index.js --name vynx-backend
