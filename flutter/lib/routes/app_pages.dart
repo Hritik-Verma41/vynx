@@ -4,6 +4,7 @@ import 'package:vynx/pages/login/login_page.dart';
 import 'package:vynx/pages/settings/account_info/account_info_page.dart';
 import 'package:vynx/pages/settings/appearance/appearance_page.dart';
 import 'package:vynx/pages/settings/privacy_settings/privacy_settings_page.dart';
+import 'package:vynx/pages/settings/security_settings/security_settings_page.dart';
 import 'package:vynx/pages/signup/otp/otp_page.dart';
 import 'package:vynx/pages/signup/setup_on_signup/setup_on_signup_page.dart';
 import 'package:vynx/pages/signup/signup_page.dart';
@@ -22,6 +23,11 @@ class AppPages {
     GetPage(
       name: Routes.privacySettings,
       page: () => PrivacySettingsPage(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: Routes.settingsSecurity,
+      page: () => SecuritySettingsPage(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(name: Routes.setupOnSignUp, page: () => SetupOnSignupPage()),

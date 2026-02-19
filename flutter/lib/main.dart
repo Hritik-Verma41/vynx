@@ -4,11 +4,13 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:vynx/controllers/user_controller.dart';
 import 'package:vynx/services/api_service.dart';
+import 'package:vynx/services/app_lock_service.dart';
 import 'package:vynx/services/auth_service.dart';
 import 'package:vynx/services/backgroud_sync_service.dart';
 import 'package:vynx/services/cloudinary_service.dart';
 import 'package:vynx/services/storage_service.dart';
 import 'package:vynx/services/token_service.dart';
+import 'package:vynx/widgets/lock_overlay.dart';
 
 import './routes/app_pages.dart';
 import './routes/app_routes.dart';
@@ -27,6 +29,7 @@ Future<void> startApp() async {
   await Get.putAsync(() async => CloudinaryService());
   Get.put(UserController(), permanent: true);
   Get.put(BackgroudSyncService());
+  Get.put(AppLockService(), permanent: true);
 
   runApp(
     MyApp(initalRoute: refreshToken != null ? Routes.vynxhub : Routes.login),
@@ -60,6 +63,21 @@ class MyApp extends StatelessWidget {
       themeMode: storage.getThemeMode(),
       initialRoute: initalRoute,
       getPages: AppPages.routes,
+      builder: (context, child) {
+        final lockService = Get.find<AppLockService>();
+
+        return Stack(
+          children: [
+            child!,
+            Obx(() {
+              if (lockService.isOverlayShowing.value) {
+                return LockOverlay(onRetry: () => lockService.checkAndLock());
+              }
+              return const SizedBox.shrink();
+            }),
+          ],
+        );
+      },
     );
   }
 }

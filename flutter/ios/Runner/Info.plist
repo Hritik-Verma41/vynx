@@ -49,6 +49,8 @@
 		</array>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<key>NSFaceIDUsageDescription</key>
+		<string>Vynx needs Face ID to secure your conversations.</string>
 		<key>NSCameraUsageDescription</key>
 		<string>Vynx needs camera access to let you take a profile picture.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
