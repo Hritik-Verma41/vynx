@@ -48,7 +48,7 @@ class SettingsPage extends StatelessWidget {
                     Icons.privacy_tip_outlined,
                     "Privacy",
                     isDark,
-                    onTap: () {},
+                    onTap: () => Get.toNamed(Routes.privacySettings),
                   ),
                   _settingsTile(
                     Icons.security_outlined,
