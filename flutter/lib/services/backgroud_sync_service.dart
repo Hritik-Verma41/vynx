@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -9,6 +12,26 @@ import 'package:vynx/services/storage_service.dart';
 class BackgroudSyncService extends GetxService {
   final Dio _dio = Get.find<ApiService>().dio;
   final StorageService _storage = Get.find<StorageService>();
+  StreamSubscription? _connectivitySubscription;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      results,
+    ) {
+      if (results.any((result) => result != ConnectivityResult.none)) {
+        debugPrint("Network available: Triggering Sync...");
+        syncPrivacySettings();
+      }
+    });
+  }
+
+  @override
+  void onClose() {
+    _connectivitySubscription?.cancel();
+    super.onClose();
+  }
 
   Future<void> syncPrivacySettings() async {
     try {

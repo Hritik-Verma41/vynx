@@ -26,8 +26,7 @@ Future<void> startApp() async {
   Get.put(AuthService(), permanent: true);
   await Get.putAsync(() async => CloudinaryService());
   Get.put(UserController(), permanent: true);
-  final syncService = Get.put(BackgroudSyncService());
-  syncService.syncPrivacySettings();
+  Get.put(BackgroudSyncService());
 
   runApp(
     MyApp(initalRoute: refreshToken != null ? Routes.vynxhub : Routes.login),
