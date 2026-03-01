@@ -20,10 +20,10 @@ class AuthTimerService extends GetxService {
     });
   }
 
-  Future<void> refreshSession() async {
+  Future<bool> refreshSession() async {
     try {
       final refreshToken = await _tokenService.getRefreshToken();
-      if (refreshToken == null) return;
+      if (refreshToken == null) return false;
 
       final response = await Get.find<ApiService>().dio.post(
         ApiUrls.refreshToken,
@@ -32,9 +32,12 @@ class AuthTimerService extends GetxService {
 
       if (response.statusCode == 200) {
         log("Background Token Refresh Successful");
+        return true;
       }
+      return false;
     } catch (e) {
       log("Background Refresh Failed: $e");
+      return false;
     }
   }
 
