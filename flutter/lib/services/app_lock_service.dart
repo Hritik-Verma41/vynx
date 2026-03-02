@@ -29,20 +29,23 @@ class AppLockService extends GetxService with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final isLockEnabled = _storage.getAppLockEnabled();
 
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
       if (isLockEnabled) {
         _isUnlocked = false;
         isOverlayShowing.value = true;
       } else {
         isOverlayShowing.value = false;
+        _isUnlocked = true;
       }
     }
 
-    if (state == AppLifecycleState.resumed && !_isUnlocked) {
+    if (state == AppLifecycleState.resumed) {
       if (isLockEnabled) {
-        debugPrint("App Resumed: Checking Lock...");
-        checkAndLock();
+        if (!_isUnlocked) {
+          isOverlayShowing.value = true;
+          checkAndLock();
+        }
       } else {
         isOverlayShowing.value = false;
         _isUnlocked = true;
@@ -52,12 +55,10 @@ class AppLockService extends GetxService with WidgetsBindingObserver {
 
   Future<void> checkAndLock() async {
     final bool isLockEnabled = _storage.getAppLockEnabled();
-
     if (!isLockEnabled || _isUnlocked) return;
 
     if (!_isAuthenticating) {
       _isAuthenticating = true;
-
       bool authenticated = await _authenticate();
 
       if (authenticated) {
@@ -72,11 +73,9 @@ class AppLockService extends GetxService with WidgetsBindingObserver {
 
   Future<bool> _authenticate() async {
     try {
-      final bool canAuthenticateWithBiometrics = await _auth.canCheckBiometrics;
-      final bool canAuthenticate =
-          canAuthenticateWithBiometrics || await _auth.isDeviceSupported();
-
-      if (!canAuthenticate) return true;
+      final bool canAuth =
+          await _auth.canCheckBiometrics || await _auth.isDeviceSupported();
+      if (!canAuth) return true;
 
       return await _auth.authenticate(
         localizedReason: 'Vynx is locked. Please authenticate to continue.',
@@ -87,7 +86,6 @@ class AppLockService extends GetxService with WidgetsBindingObserver {
         ),
       );
     } catch (e) {
-      debugPrint("Auth Error: $e");
       return false;
     }
   }
