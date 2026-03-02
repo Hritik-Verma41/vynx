@@ -9,6 +9,7 @@ class StorageService extends GetxService {
   final _secure = const FlutterSecureStorage();
 
   static const String accessKey = 'access_token';
+  static const String appLockKey = 'app_lock_enabled';
   static const String privacySettingsKey = 'cached_privacy_settings';
   static const String refreshKey = 'refresh_token';
   static const String themeKey = 'app_theme_mode';
@@ -17,6 +18,14 @@ class StorageService extends GetxService {
   void writeCache(String key, dynamic value) => _cache.write(key, value);
   T? readCache<T>(String key) => _cache.read<T>(key);
   void removeCache(String key) => _cache.remove(key);
+
+  void saveAppLockEnabled(bool enabled) {
+    _cache.write(appLockKey, enabled);
+  }
+
+  bool getAppLockEnabled() {
+    return _cache.read<bool>(appLockKey) ?? false;
+  }
 
   void savePrivacySettings(PrivacySettingsModel settings) {
     _cache.write(privacySettingsKey, settings.toJson());

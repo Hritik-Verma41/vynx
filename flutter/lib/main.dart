@@ -4,11 +4,14 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:vynx/controllers/user_controller.dart';
 import 'package:vynx/services/api_service.dart';
+import 'package:vynx/services/app_lock_service.dart';
 import 'package:vynx/services/auth_service.dart';
+import 'package:vynx/services/auth_timer_service.dart';
 import 'package:vynx/services/backgroud_sync_service.dart';
 import 'package:vynx/services/cloudinary_service.dart';
 import 'package:vynx/services/storage_service.dart';
 import 'package:vynx/services/token_service.dart';
+import 'package:vynx/widgets/lock_overlay.dart';
 
 import './routes/app_pages.dart';
 import './routes/app_routes.dart';
@@ -17,17 +20,32 @@ Future<void> startApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await GetStorage.init();
+
   await Get.putAsync(() async => StorageService());
   final storage = Get.find<StorageService>();
   Get.changeThemeMode(storage.getThemeMode());
+
   final tokenService = Get.put(TokenService());
-  String? refreshToken = await tokenService.getRefreshToken();
   await Get.putAsync(() async => ApiService());
+
+  final authTimer = Get.put(AuthTimerService());
+
+  String? refreshToken = await tokenService.getRefreshToken();
+  bool isSessionValid = false;
+
+  if (refreshToken != null) {
+    isSessionValid = await authTimer.refreshSession();
+
+    if (isSessionValid) {
+      authTimer.startTokenTimer();
+    }
+  }
+
   Get.put(AuthService(), permanent: true);
   await Get.putAsync(() async => CloudinaryService());
   Get.put(UserController(), permanent: true);
-  final syncService = Get.put(BackgroudSyncService());
-  syncService.syncPrivacySettings();
+  Get.put(BackgroudSyncService());
+  Get.put(AppLockService(), permanent: true);
 
   runApp(
     MyApp(initalRoute: refreshToken != null ? Routes.vynxhub : Routes.login),
@@ -61,6 +79,21 @@ class MyApp extends StatelessWidget {
       themeMode: storage.getThemeMode(),
       initialRoute: initalRoute,
       getPages: AppPages.routes,
+      builder: (context, child) {
+        final lockService = Get.find<AppLockService>();
+
+        return Stack(
+          children: [
+            child!,
+            Obx(() {
+              if (lockService.isOverlayShowing.value) {
+                return LockOverlay(onRetry: () => lockService.checkAndLock());
+              }
+              return const SizedBox.shrink();
+            }),
+          ],
+        );
+      },
     );
   }
 }

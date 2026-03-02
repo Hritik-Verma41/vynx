@@ -54,7 +54,7 @@ class SettingsPage extends StatelessWidget {
                     Icons.security_outlined,
                     "Security",
                     isDark,
-                    onTap: () {},
+                    onTap: () => Get.toNamed(Routes.settingsSecurity),
                   ),
                 ], isDark),
                 const SizedBox(height: 20),
