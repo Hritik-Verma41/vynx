@@ -19,7 +19,7 @@ class StorageService extends GetxService {
   T? readCache<T>(String key) => _cache.read<T>(key);
   void removeCache(String key) => _cache.remove(key);
 
-  void saveAppLoackEnabled(bool enabled) {
+  void saveAppLockEnabled(bool enabled) {
     _cache.write(appLockKey, enabled);
   }
 

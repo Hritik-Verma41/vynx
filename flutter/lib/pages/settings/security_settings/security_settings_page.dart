@@ -51,7 +51,7 @@ class SecuritySettingsPage extends StatelessWidget {
                         color: isDark ? Colors.purple[200] : Colors.purple[700],
                       ),
                       title: const Text(
-                        "Screen Loack",
+                        "Screen Lock",
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
@@ -64,7 +64,9 @@ class SecuritySettingsPage extends StatelessWidget {
                         style: TextStyle(fontSize: 12),
                       ),
                       value: securitySettingCtrl.isAppLockEnabled.value,
-                      activeThumbColor: Colors.pinkAccent,
+                      activeThumbColor: isDark
+                          ? Colors.purple[200]
+                          : Colors.purple[700],
                       onChanged: (val) =>
                           securitySettingCtrl.toggleAppLock(val),
                     ),

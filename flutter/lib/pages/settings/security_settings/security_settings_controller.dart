@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:get/get.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:vynx/services/storage_service.dart';
@@ -19,13 +21,13 @@ class SecuritySettingsController extends GetxController {
       bool authenticated = await _authenticate();
       if (authenticated) {
         isAppLockEnabled.value = true;
-        _storage.saveAppLoackEnabled(true);
+        _storage.saveAppLockEnabled(true);
       }
     } else {
       bool authenticated = await _authenticate();
       if (authenticated) {
         isAppLockEnabled.value = false;
-        _storage.saveAppLoackEnabled(false);
+        _storage.saveAppLockEnabled(false);
       }
     }
   }
@@ -40,6 +42,7 @@ class SecuritySettingsController extends GetxController {
         ),
       );
     } catch (e) {
+      log("App Lock Auth Error: $e");
       return false;
     }
   }
