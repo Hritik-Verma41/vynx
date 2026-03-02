@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:get/get.dart';
+import 'package:vynx/config/api_urls.dart';
 import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/token_service.dart';
 
@@ -19,21 +20,24 @@ class AuthTimerService extends GetxService {
     });
   }
 
-  Future<void> refreshSession() async {
+  Future<bool> refreshSession() async {
     try {
       final refreshToken = await _tokenService.getRefreshToken();
-      if (refreshToken == null) return;
+      if (refreshToken == null) return false;
 
       final response = await Get.find<ApiService>().dio.post(
-        "/auth/refresh-token",
+        ApiUrls.refreshToken,
         data: {'refreshToken': refreshToken},
       );
 
       if (response.statusCode == 200) {
         log("Background Token Refresh Successful");
+        return true;
       }
+      return false;
     } catch (e) {
       log("Background Refresh Failed: $e");
+      return false;
     }
   }
 

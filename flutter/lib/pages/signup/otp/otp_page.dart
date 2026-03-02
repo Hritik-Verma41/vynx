@@ -61,6 +61,15 @@ class OtpPage extends StatelessWidget {
   }
 
   Widget _buildTextHeader(OtpCtrl controller, bool isDark) {
+    String displayPhone = "";
+
+    if (controller.accountCtrl != null) {
+      displayPhone = controller.accountCtrl!.phoneController.text;
+      if (!displayPhone.startsWith('+')) displayPhone = "+91 $displayPhone";
+    } else if (controller.setupCtrl != null) {
+      displayPhone = controller.setupCtrl!.completePhoneNumber.value;
+    }
+
     return Column(
       children: [
         Text(
@@ -73,7 +82,7 @@ class OtpPage extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          "We sent a code to\n${controller.setupCtrl.completePhoneNumber.value}",
+          "We sent a code to\n$displayPhone",
           textAlign: TextAlign.center,
           style: TextStyle(
             color: isDark ? Colors.white70 : Colors.black54,
@@ -163,7 +172,12 @@ class OtpPage extends StatelessWidget {
 
   Widget _buildVerifyButton(OtpCtrl controller) {
     return Obx(() {
-      bool isLoading = controller.setupCtrl.isLoading.value;
+      bool isLoading = false;
+      if (controller.accountCtrl != null) {
+        isLoading = controller.accountCtrl!.isLoading.value;
+      } else {
+        isLoading = controller.setupCtrl?.isLoading.value ?? false;
+      }
       bool isOtpComplete = controller.currentOtpLength.value == 6;
       bool isEnabled = isOtpComplete && !isLoading;
 
