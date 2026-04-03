@@ -75,7 +75,7 @@ class SettingsPage extends StatelessWidget {
                     Icons.data_usage_outlined,
                     "Data Usage",
                     isDark,
-                    onTap: () {},
+                    onTap: () => Get.toNamed(Routes.settingsDataUsage),
                   ),
                 ], isDark),
                 const SizedBox(height: 40),

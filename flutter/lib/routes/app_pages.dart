@@ -4,6 +4,8 @@ import 'package:vynx/pages/login/login_page.dart';
 import 'package:vynx/pages/settings/account_info/account_info_page.dart';
 import 'package:vynx/pages/settings/account_info/account_info_controller.dart';
 import 'package:vynx/pages/settings/appearance/appearance_page.dart';
+import 'package:vynx/pages/settings/data_usage/data_usage_settings_controller.dart';
+import 'package:vynx/pages/settings/data_usage/data_usage_settings_page.dart';
 import 'package:vynx/pages/settings/notifications/notifications_settings_controller.dart';
 import 'package:vynx/pages/settings/notifications/notifications_settings_page.dart';
 import 'package:vynx/pages/settings/privacy_settings/privacy_settings_page.dart';
@@ -30,6 +32,16 @@ class AppPages {
       }),
     ),
     GetPage(name: Routes.login, page: () => const LoginPage()),
+    GetPage(
+      name: Routes.settingsDataUsage,
+      page: () => const DataUsageSettingsPage(),
+      middlewares: [AuthMiddleware()],
+      binding: BindingsBuilder(() {
+        Get.lazyPut<DataUsageSettingsController>(
+          () => DataUsageSettingsController(),
+        );
+      }),
+    ),
     GetPage(
       name: Routes.settingsNotificaions,
       page: () => NotificationsSettingsPage(),

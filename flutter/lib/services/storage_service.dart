@@ -11,6 +11,19 @@ class StorageService extends GetxService {
 
   static const String accessKey = 'access_token';
   static const String appLockKey = 'app_lock_enabled';
+  static const String autoDlMobilePhotosKey = 'auto_dl_mobile_photos';
+  static const String autoDlMobileAudioKey = 'auto_dl_mobile_audio';
+  static const String autoDlMobileDocsKey = 'auto_dl_mobile_docs';
+  static const String autoDlMobileVideosKey = 'auto_dl_mobile_videos';
+  static const String autoDlWifiPhotosKey = 'auto_dl_wifi_photos';
+  static const String autoDlWifiAudioKey = 'auto_dl_wifi_audio';
+  static const String autoDlWifiDocsKey = 'auto_dl_wifi_docs';
+  static const String autoDlWifiVideosKey = 'auto_dl_wifi_videos';
+  static const String autoDlRoamingPhotosKey = 'auto_dl_roaming_photos';
+  static const String autoDlRoamingAudioKey = 'auto_dl_roaming_audio';
+  static const String autoDlRoamingDocsKey = 'auto_dl_roaming_docs';
+  static const String autoDlRoamingVideosKey = 'auto_dl_roaming_videos';
+  static const String dataSaverKey = 'data_saver';
   static const String privacySettingsKey = 'cached_privacy_settings';
   static const String notificationSettingsKey = 'cached_notification_settings';
   static const String notifCallsKey = 'notif_calls';
@@ -21,6 +34,7 @@ class StorageService extends GetxService {
   static const String refreshKey = 'refresh_token';
   static const String themeKey = 'app_theme_mode';
   static const String userKey = 'user_cache';
+  static const String wifiOnlySyncKey = 'wifi_only_sync';
 
   void writeCache(String key, dynamic value) => _cache.write(key, value);
   T? readCache<T>(String key) => _cache.read<T>(key);
