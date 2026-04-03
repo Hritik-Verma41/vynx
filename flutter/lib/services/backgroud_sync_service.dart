@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vynx/config/api_urls.dart';
+import 'package:vynx/models/notificatio_settings_model.dart';
 import 'package:vynx/models/privacy_settings_model.dart';
 import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/storage_service.dart';
@@ -31,6 +32,35 @@ class BackgroudSyncService extends GetxService {
   void onClose() {
     _connectivitySubscription?.cancel();
     super.onClose();
+  }
+
+  Future<void> syncNotificationSettings() async {
+    try {
+      final response = await _dio.get(ApiUrls.notificationSettings);
+      final serverSettings = NotificationSettingsModel.fromJson(
+        response.data['settings'],
+      );
+
+      final localSettings = _storage.getNotificationSettings();
+
+      if (localSettings == null) {
+        _storage.saveNotificationSettings(serverSettings);
+        return;
+      }
+
+      if (localSettings.updatedAt.isAfter(serverSettings.updatedAt)) {
+        await _dio.patch(
+          ApiUrls.notificationSettingsUpdate,
+          data: localSettings.toJson(),
+        );
+        debugPrint("Notification Sync: Pushed local changes to server.");
+      } else if (serverSettings.updatedAt.isAfter(localSettings.updatedAt)) {
+        _storage.saveNotificationSettings(serverSettings);
+        debugPrint("Notification Sync: Updated local cache from server.");
+      }
+    } catch (e) {
+      debugPrint("Notification Sync: Failed or Offline. Will try next launch.");
+    }
   }
 
   Future<void> syncPrivacySettings() async {

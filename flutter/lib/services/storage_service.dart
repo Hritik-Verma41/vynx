@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:vynx/models/notificatio_settings_model.dart';
 import 'package:vynx/models/privacy_settings_model.dart';
 
 class StorageService extends GetxService {
@@ -11,6 +12,12 @@ class StorageService extends GetxService {
   static const String accessKey = 'access_token';
   static const String appLockKey = 'app_lock_enabled';
   static const String privacySettingsKey = 'cached_privacy_settings';
+  static const String notificationSettingsKey = 'cached_notification_settings';
+  static const String notifCallsKey = 'notif_calls';
+  static const String notifEnabledKey = 'notif_enabled';
+  static const String notifMessagePreviewKey = 'notif_message_preview';
+  static const String notifSoundKey = 'notif_sound';
+  static const String notifVibrateKey = 'notif_vibrate';
   static const String refreshKey = 'refresh_token';
   static const String themeKey = 'app_theme_mode';
   static const String userKey = 'user_cache';
@@ -27,8 +34,22 @@ class StorageService extends GetxService {
     return _cache.read<bool>(appLockKey) ?? false;
   }
 
+  void saveNotificationSettings(NotificationSettingsModel settings) {
+    _cache.write(notificationSettingsKey, settings.toJson());
+  }
+
   void savePrivacySettings(PrivacySettingsModel settings) {
     _cache.write(privacySettingsKey, settings.toJson());
+  }
+
+  NotificationSettingsModel? getNotificationSettings() {
+    final data = _cache.read(notificationSettingsKey);
+    if (data != null) {
+      return NotificationSettingsModel.fromJson(
+        Map<String, dynamic>.from(data),
+      );
+    }
+    return null;
   }
 
   PrivacySettingsModel? getPrivacySettings() {
