@@ -30,10 +30,24 @@ privacySettingsRouter.patch('/update', protect, async (req: Request, res: Respon
         const userId = (req as any).user._id;
         const { updatedAt, ...otherUpdates } = req.body;
 
+        if (!updatedAt) {
+            return res.status(400).json({
+                success: false,
+                message: "updatedAt is required."
+            });
+        }
+
+        const incomingDate = new Date(updatedAt);
+        if (Number.isNaN(incomingDate.getTime())) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid updatedAt value."
+            });
+        }
+
         let settings = await PrivacySettings.findOne({ user: userId });
 
-        if (settings && updatedAt) {
-            const incomingDate = new Date(updatedAt);
+        if (settings) {
             const existingDate = new Date(settings.updatedAt);
 
             if (incomingDate <= existingDate) {
@@ -47,7 +61,7 @@ privacySettingsRouter.patch('/update', protect, async (req: Request, res: Respon
 
         settings = await PrivacySettings.findOneAndUpdate(
             { user: userId },
-            { $set: { ...otherUpdates, updatedAt: new Date(updatedAt) } },
+            { $set: { ...otherUpdates, updatedAt: incomingDate } },
             { new: true, upsert: true, runValidators: true }
         );
 

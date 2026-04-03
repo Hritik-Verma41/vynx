@@ -11,6 +11,7 @@ import 'package:vynx/widgets/vynx_alert_popup.dart';
 class ApiService extends GetxService {
   late Dio _dio;
   Future<bool>? _refreshInFlight;
+  bool _isSessionDialogShowing = false;
 
   Dio get dio => _dio;
 
@@ -29,16 +30,33 @@ class ApiService extends GetxService {
 
     Future<void> handleLogoutConflict() async {
       await Get.find<TokenService>().clearTokens();
+
+      // If we're already on the login screen, don't force a route reset.
+      if (Get.currentRoute == Routes.login) {
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
+        return;
+      }
+
+      if (_isSessionDialogShowing) return;
+      _isSessionDialogShowing = true;
+
       Get.dialog(
         VynxAlertPopup(
           title: "Session Conflict",
           message:
               "You have been logged in on another device. Please log in again to continue.",
           confirmBtnText: 'Back to Login',
-          onConfirm: () => Get.offAllNamed(Routes.login),
+          onConfirm: () {
+            if (Get.isDialogOpen ?? false) Get.back();
+            if (Get.currentRoute != Routes.login) {
+              Get.offAllNamed(Routes.login);
+            }
+          },
         ),
         barrierDismissible: false,
-      );
+      ).whenComplete(() => _isSessionDialogShowing = false);
     }
 
     Future<bool> refreshTokens() {
@@ -113,6 +131,19 @@ class ApiService extends GetxService {
           }
 
           if (status != 401) return handler.next(e);
+
+          final path = e.requestOptions.path;
+          if (path.endsWith(ApiUrls.authLogin) ||
+              path.endsWith(ApiUrls.authSignup) ||
+              path.endsWith(ApiUrls.refreshToken)) {
+            return handler.next(e);
+          }
+
+          final refreshToken = await Get.find<TokenService>().getRefreshToken();
+          if (refreshToken == null) {
+            // Not logged in (or tokens cleared). Treat as a normal 401.
+            return handler.next(e);
+          }
 
           // If refresh itself fails, don't recursively attempt to refresh.
           if (e.requestOptions.path.endsWith(ApiUrls.refreshToken)) {
