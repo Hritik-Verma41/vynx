@@ -9,7 +9,7 @@ class SecuritySettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final securitySettingCtrl = Get.put(SecuritySettingsController());
+    final securitySettingCtrl = Get.find<SecuritySettingsController>();
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(

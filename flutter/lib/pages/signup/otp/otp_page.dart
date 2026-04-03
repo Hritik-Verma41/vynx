@@ -7,7 +7,7 @@ class OtpPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(OtpCtrl());
+    final controller = Get.find<OtpCtrl>();
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(

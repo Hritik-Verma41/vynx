@@ -90,7 +90,7 @@ class SettingsPage extends StatelessWidget {
   }
 
   Widget _buildProfileCard(bool isDark) {
-    final userCtrl = Get.put(UserController());
+    final userCtrl = Get.find<UserController>();
 
     return Obx(() {
       final u = userCtrl.user.value;
