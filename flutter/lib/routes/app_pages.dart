@@ -4,6 +4,8 @@ import 'package:vynx/pages/login/login_page.dart';
 import 'package:vynx/pages/settings/account_info/account_info_page.dart';
 import 'package:vynx/pages/settings/account_info/account_info_controller.dart';
 import 'package:vynx/pages/settings/appearance/appearance_page.dart';
+import 'package:vynx/pages/settings/notifications/notifications_settings_controller.dart';
+import 'package:vynx/pages/settings/notifications/notifications_settings_page.dart';
 import 'package:vynx/pages/settings/privacy_settings/privacy_settings_page.dart';
 import 'package:vynx/pages/settings/privacy_settings/privacy_settings_controller.dart';
 import 'package:vynx/pages/settings/security_settings/security_settings_page.dart';
@@ -29,6 +31,16 @@ class AppPages {
     ),
     GetPage(name: Routes.login, page: () => const LoginPage()),
     GetPage(
+      name: Routes.settingsNotificaions,
+      page: () => NotificationsSettingsPage(),
+      middlewares: [AuthMiddleware()],
+      binding: BindingsBuilder(() {
+        Get.lazyPut<NotificationsSettingsController>(
+          () => NotificationsSettingsController(),
+        );
+      }),
+    ),
+    GetPage(
       name: Routes.otpPage,
       page: () => const OtpPage(),
       binding: BindingsBuilder(() {
@@ -40,7 +52,9 @@ class AppPages {
       page: () => PrivacySettingsPage(),
       middlewares: [AuthMiddleware()],
       binding: BindingsBuilder(() {
-        Get.lazyPut<PrivacySettingsController>(() => PrivacySettingsController());
+        Get.lazyPut<PrivacySettingsController>(
+          () => PrivacySettingsController(),
+        );
       }),
     ),
     GetPage(
@@ -48,7 +62,9 @@ class AppPages {
       page: () => SecuritySettingsPage(),
       middlewares: [AuthMiddleware()],
       binding: BindingsBuilder(() {
-        Get.lazyPut<SecuritySettingsController>(() => SecuritySettingsController());
+        Get.lazyPut<SecuritySettingsController>(
+          () => SecuritySettingsController(),
+        );
       }),
     ),
     GetPage(

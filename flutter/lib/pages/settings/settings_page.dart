@@ -63,7 +63,7 @@ class SettingsPage extends StatelessWidget {
                     Icons.notifications_none_outlined,
                     "Notifications",
                     isDark,
-                    onTap: () {},
+                    onTap: () => Get.toNamed(Routes.settingsNotificaions),
                   ),
                   _settingsTile(
                     Icons.palette_outlined,
