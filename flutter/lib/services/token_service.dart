@@ -20,5 +20,8 @@ class TokenService extends GetxService {
     return token;
   }
 
-  Future<void> clearTokens() async => await _storage.clearAll();
+  Future<void> clearTokens() async {
+    isUserLoggedIn = false;
+    await _storage.clearAll();
+  }
 }

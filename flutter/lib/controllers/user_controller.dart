@@ -6,6 +6,7 @@ import 'package:vynx/models/user_model.dart';
 import 'package:vynx/routes/app_routes.dart';
 import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/storage_service.dart';
+import 'package:vynx/services/token_service.dart';
 
 class UserController extends GetxController {
   final _storage = Get.find<StorageService>();
@@ -54,7 +55,7 @@ class UserController extends GetxController {
   }
 
   Future<void> logout() async {
-    await _storage.clearAll();
+    await Get.find<TokenService>().clearTokens();
 
     Get.delete<UserController>(force: true);
     Get.offAllNamed(Routes.login);
