@@ -5,6 +5,7 @@ import 'package:vynx/config/api_urls.dart';
 import 'package:vynx/models/user_model.dart';
 import 'package:vynx/routes/app_routes.dart';
 import 'package:vynx/services/api_service.dart';
+import 'package:vynx/services/auth_timer_service.dart';
 import 'package:vynx/services/storage_service.dart';
 import 'package:vynx/services/token_service.dart';
 
@@ -55,6 +56,7 @@ class UserController extends GetxController {
   }
 
   Future<void> logout() async {
+    Get.find<AuthTimerService>().stopTimer();
     await Get.find<TokenService>().clearTokens();
 
     Get.delete<UserController>(force: true);

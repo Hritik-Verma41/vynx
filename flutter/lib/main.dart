@@ -28,7 +28,7 @@ Future<void> startApp() async {
   final tokenService = Get.put(TokenService());
   await Get.putAsync(() async => ApiService());
 
-  final authTimer = Get.put(AuthTimerService());
+  final authTimer = Get.put(AuthTimerService(), permanent: true);
 
   String? refreshToken = await tokenService.getRefreshToken();
   bool isSessionValid = false;
