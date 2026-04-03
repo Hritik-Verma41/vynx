@@ -7,6 +7,8 @@ class ApiUrls {
   static const notificationSettingsUpdate = '/notification-settings/update';
   static const privacySettings = '/privacy-settings';
   static const privacySettingsUpdate = '/privacy-settings/update';
+  static const dataUsageSettings = '/data-usage-settings';
+  static const dataUsageSettingsUpdate = '/data-usage-settings/update';
   static const refreshToken = '/auth/refresh-token';
   static const updateProfile = '/users/update-profile';
 }

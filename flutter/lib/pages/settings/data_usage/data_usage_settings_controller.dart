@@ -1,136 +1,142 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:vynx/config/api_urls.dart';
+import 'package:vynx/models/data_usage_settings_model.dart';
+import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/storage_service.dart';
 
 class DataUsageSettingsController extends GetxController {
+  final Dio _dio = Get.find<ApiService>().dio;
   final StorageService _storage = Get.find<StorageService>();
 
-  final dataSaver = false.obs;
+  var isLoading = false.obs;
+  var settings = Rxn<DataUsageSettingsModel>();
 
+  @override
+  void onInit() {
+    super.onInit();
+    _loadFromCache();
+    fetchSettings();
+  }
+
+  void _loadFromCache() {
+    final cached = _storage.getDataUsageSettings();
+    if (cached != null) {
+      settings.value = cached;
+      _syncObservablesFromModel(cached);
+    }
+  }
+
+  void _syncObservablesFromModel(DataUsageSettingsModel model) {
+    dataSaver.value = model.dataSaver;
+    mobilePhotos.value = model.mobilePhotos;
+    mobileVideos.value = model.mobileVideos;
+    mobileAudio.value = model.mobileAudio;
+    mobileDocuments.value = model.mobileDocuments;
+    wifiPhotos.value = model.wifiPhotos;
+    wifiVideos.value = model.wifiVideos;
+    wifiAudio.value = model.wifiAudio;
+    wifiDocuments.value = model.wifiDocuments;
+    roamingPhotos.value = model.roamingPhotos;
+    roamingVideos.value = model.roamingVideos;
+    roamingAudio.value = model.roamingAudio;
+    roamingDocuments.value = model.roamingDocuments;
+  }
+
+  Future<void> fetchSettings() async {
+    if (settings.value == null) isLoading.value = true;
+    try {
+      final res = await _dio.get(ApiUrls.dataUsageSettings);
+      if (res.statusCode == 200) {
+        final server = DataUsageSettingsModel.fromJson(res.data['settings']);
+        final local = settings.value;
+
+        if (local == null || server.updatedAt.isAfter(local.updatedAt)) {
+          settings.value = server;
+          _storage.saveDataUsageSettings(server);
+          _syncObservablesFromModel(server);
+        }
+      }
+    } catch (e) {
+      debugPrint("Offline/Error fetching data usage settings: $e");
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> updateSetting(String key, dynamic value) async {
+    if (settings.value == null) return;
+
+    final now = DateTime.now();
+    final updated = settings.value!.toJson();
+    updated[key] = value;
+    updated['updatedAt'] = now.toIso8601String();
+
+    final localModel = DataUsageSettingsModel.fromJson(updated);
+    settings.value = localModel;
+    _storage.saveDataUsageSettings(localModel);
+    _syncObservablesFromModel(localModel);
+
+    try {
+      final res = await _dio.patch(
+        ApiUrls.dataUsageSettingsUpdate,
+        data: {key: value, 'updatedAt': updated['updatedAt']},
+      );
+
+      if (res.statusCode == 200) {
+        final server = DataUsageSettingsModel.fromJson(res.data['settings']);
+        settings.value = server;
+        _storage.saveDataUsageSettings(server);
+        _syncObservablesFromModel(server);
+      }
+    } catch (e) {
+      Get.snackbar(
+        "Offline",
+        "Saved locally. We'll sync when you're back online.",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.withValues(alpha: 0.8),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
+  // Observable properties for UI binding
+  final dataSaver = false.obs;
   final mobilePhotos = true.obs;
   final mobileVideos = false.obs;
   final mobileAudio = false.obs;
   final mobileDocuments = false.obs;
-
   final wifiPhotos = true.obs;
   final wifiVideos = true.obs;
   final wifiAudio = true.obs;
   final wifiDocuments = true.obs;
-
   final roamingPhotos = false.obs;
   final roamingVideos = false.obs;
   final roamingAudio = false.obs;
   final roamingDocuments = false.obs;
 
-  bool _readBool(String key, bool fallback) =>
-      _storage.readCache(key) ?? fallback;
-
-  void _writeBool(String key, bool value) => _storage.writeCache(key, value);
-
-  @override
-  void onInit() {
-    super.onInit();
-
-    dataSaver.value = _readBool(StorageService.dataSaverKey, false);
-
-    mobilePhotos.value = _readBool(StorageService.autoDlMobilePhotosKey, true);
-    mobileVideos.value = _readBool(StorageService.autoDlMobileVideosKey, false);
-    mobileAudio.value = _readBool(StorageService.autoDlMobileAudioKey, false);
-    mobileDocuments.value = _readBool(
-      StorageService.autoDlMobileDocsKey,
-      false,
-    );
-
-    wifiPhotos.value = _readBool(StorageService.autoDlWifiPhotosKey, true);
-    wifiVideos.value = _readBool(StorageService.autoDlWifiVideosKey, true);
-    wifiAudio.value = _readBool(StorageService.autoDlWifiAudioKey, true);
-    wifiDocuments.value = _readBool(StorageService.autoDlWifiDocsKey, true);
-
-    roamingPhotos.value = _readBool(
-      StorageService.autoDlRoamingPhotosKey,
-      false,
-    );
-    roamingVideos.value = _readBool(
-      StorageService.autoDlRoamingVideosKey,
-      false,
-    );
-    roamingAudio.value = _readBool(StorageService.autoDlRoamingAudioKey, false);
-    roamingDocuments.value = _readBool(
-      StorageService.autoDlRoamingDocsKey,
-      false,
-    );
-  }
-
+  // Setters with sync
   void setDataSaver(bool v) {
-    dataSaver.value = v;
-    _writeBool(StorageService.dataSaverKey, v);
-
+    updateSetting('dataSaver', v);
     if (v) {
-      mobileVideos.value = false;
-      mobileAudio.value = false;
-      mobileDocuments.value = false;
-      _writeBool(StorageService.autoDlMobileVideosKey, false);
-      _writeBool(StorageService.autoDlMobileAudioKey, false);
-      _writeBool(StorageService.autoDlMobileDocsKey, false);
+      updateSetting('mobileVideos', false);
+      updateSetting('mobileAudio', false);
+      updateSetting('mobileDocuments', false);
     }
   }
 
-  void setMobilePhotos(bool v) {
-    mobilePhotos.value = v;
-    _writeBool(StorageService.autoDlMobilePhotosKey, v);
-  }
-
-  void setMobileVideos(bool v) {
-    mobileVideos.value = v;
-    _writeBool(StorageService.autoDlMobileVideosKey, v);
-  }
-
-  void setMobileAudio(bool v) {
-    mobileAudio.value = v;
-    _writeBool(StorageService.autoDlMobileAudioKey, v);
-  }
-
-  void setMobileDocuments(bool v) {
-    mobileDocuments.value = v;
-    _writeBool(StorageService.autoDlMobileDocsKey, v);
-  }
-
-  void setWifiPhotos(bool v) {
-    wifiPhotos.value = v;
-    _writeBool(StorageService.autoDlWifiPhotosKey, v);
-  }
-
-  void setWifiVideos(bool v) {
-    wifiVideos.value = v;
-    _writeBool(StorageService.autoDlWifiVideosKey, v);
-  }
-
-  void setWifiAudio(bool v) {
-    wifiAudio.value = v;
-    _writeBool(StorageService.autoDlWifiAudioKey, v);
-  }
-
-  void setWifiDocuments(bool v) {
-    wifiDocuments.value = v;
-    _writeBool(StorageService.autoDlWifiDocsKey, v);
-  }
-
-  void setRoamingPhotos(bool v) {
-    roamingPhotos.value = v;
-    _writeBool(StorageService.autoDlRoamingPhotosKey, v);
-  }
-
-  void setRoamingVideos(bool v) {
-    roamingVideos.value = v;
-    _writeBool(StorageService.autoDlRoamingVideosKey, v);
-  }
-
-  void setRoamingAudio(bool v) {
-    roamingAudio.value = v;
-    _writeBool(StorageService.autoDlRoamingAudioKey, v);
-  }
-
-  void setRoamingDocuments(bool v) {
-    roamingDocuments.value = v;
-    _writeBool(StorageService.autoDlRoamingDocsKey, v);
-  }
+  void setMobilePhotos(bool v) => updateSetting('mobilePhotos', v);
+  void setMobileVideos(bool v) => updateSetting('mobileVideos', v);
+  void setMobileAudio(bool v) => updateSetting('mobileAudio', v);
+  void setMobileDocuments(bool v) => updateSetting('mobileDocuments', v);
+  void setWifiPhotos(bool v) => updateSetting('wifiPhotos', v);
+  void setWifiVideos(bool v) => updateSetting('wifiVideos', v);
+  void setWifiAudio(bool v) => updateSetting('wifiAudio', v);
+  void setWifiDocuments(bool v) => updateSetting('wifiDocuments', v);
+  void setRoamingPhotos(bool v) => updateSetting('roamingPhotos', v);
+  void setRoamingVideos(bool v) => updateSetting('roamingVideos', v);
+  void setRoamingAudio(bool v) => updateSetting('roamingAudio', v);
+  void setRoamingDocuments(bool v) => updateSetting('roamingDocuments', v);
 }

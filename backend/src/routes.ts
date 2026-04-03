@@ -5,12 +5,14 @@ import userRouter from './routes/users';
 import utilsRouter from './routes/utils';
 import privacySettingsRouter from './routes/privacySettings';
 import notificationSettingsRouter from './routes/notificationSettings';
+import dataUsageSettingsRouter from './routes/dataUsageSettings';
 
 const routesRouter: Router = Router();
 
 routesRouter.use('/auth', authRouter);
 routesRouter.use('/notification-settings', notificationSettingsRouter);
 routesRouter.use('/privacy-settings', privacySettingsRouter);
+routesRouter.use('/data-usage-settings', dataUsageSettingsRouter);
 routesRouter.use('/users', userRouter);
 routesRouter.use('/utils', utilsRouter);
 

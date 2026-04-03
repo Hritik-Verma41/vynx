@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:vynx/models/data_usage_settings_model.dart';
 import 'package:vynx/models/notificatio_settings_model.dart';
 import 'package:vynx/models/privacy_settings_model.dart';
 
@@ -26,6 +27,7 @@ class StorageService extends GetxService {
   static const String dataSaverKey = 'data_saver';
   static const String privacySettingsKey = 'cached_privacy_settings';
   static const String notificationSettingsKey = 'cached_notification_settings';
+  static const String dataUsageSettingsKey = 'cached_data_usage_settings';
   static const String notifCallsKey = 'notif_calls';
   static const String notifEnabledKey = 'notif_enabled';
   static const String notifMessagePreviewKey = 'notif_message_preview';
@@ -70,6 +72,18 @@ class StorageService extends GetxService {
     final data = _cache.read(privacySettingsKey);
     if (data != null) {
       return PrivacySettingsModel.fromJson(Map<String, dynamic>.from(data));
+    }
+    return null;
+  }
+
+  void saveDataUsageSettings(DataUsageSettingsModel settings) {
+    _cache.write(dataUsageSettingsKey, settings.toJson());
+  }
+
+  DataUsageSettingsModel? getDataUsageSettings() {
+    final data = _cache.read(dataUsageSettingsKey);
+    if (data != null) {
+      return DataUsageSettingsModel.fromJson(Map<String, dynamic>.from(data));
     }
     return null;
   }

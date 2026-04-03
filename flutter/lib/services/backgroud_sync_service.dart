@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vynx/config/api_urls.dart';
+import 'package:vynx/models/data_usage_settings_model.dart';
 import 'package:vynx/models/notificatio_settings_model.dart';
 import 'package:vynx/models/privacy_settings_model.dart';
 import 'package:vynx/services/api_service.dart';
@@ -24,6 +25,7 @@ class BackgroudSyncService extends GetxService {
       if (results.any((result) => result != ConnectivityResult.none)) {
         debugPrint("Network available: Triggering Sync...");
         syncPrivacySettings();
+        syncDataUsageSettings();
       }
     });
   }
@@ -89,6 +91,35 @@ class BackgroudSyncService extends GetxService {
       }
     } catch (e) {
       debugPrint("Global Sync: Failed or Offline. Will try next launch.");
+    }
+  }
+
+  Future<void> syncDataUsageSettings() async {
+    try {
+      final response = await _dio.get(ApiUrls.dataUsageSettings);
+      final serverSettings = DataUsageSettingsModel.fromJson(
+        response.data['settings'],
+      );
+
+      final localSettings = _storage.getDataUsageSettings();
+
+      if (localSettings == null) {
+        _storage.saveDataUsageSettings(serverSettings);
+        return;
+      }
+
+      if (localSettings.updatedAt.isAfter(serverSettings.updatedAt)) {
+        await _dio.patch(
+          ApiUrls.dataUsageSettingsUpdate,
+          data: localSettings.toJson(),
+        );
+        debugPrint("Data Usage Sync: Pushed local changes to server.");
+      } else if (serverSettings.updatedAt.isAfter(localSettings.updatedAt)) {
+        _storage.saveDataUsageSettings(serverSettings);
+        debugPrint("Data Usage Sync: Updated local cache from server.");
+      }
+    } catch (e) {
+      debugPrint("Data Usage Sync: Failed or Offline. Will try next launch.");
     }
   }
 }
