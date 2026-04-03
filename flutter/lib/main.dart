@@ -38,6 +38,8 @@ Future<void> startApp() async {
 
     if (isSessionValid) {
       authTimer.startTokenTimer();
+    } else {
+      tokenService.isUserLoggedIn = false;
     }
   }
 
@@ -47,9 +49,7 @@ Future<void> startApp() async {
   Get.put(BackgroudSyncService());
   Get.put(AppLockService(), permanent: true);
 
-  runApp(
-    MyApp(initalRoute: refreshToken != null ? Routes.vynxhub : Routes.login),
-  );
+  runApp(MyApp(initalRoute: isSessionValid ? Routes.vynxhub : Routes.login));
 }
 
 class MyApp extends StatelessWidget {
