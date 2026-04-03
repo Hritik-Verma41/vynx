@@ -11,7 +11,7 @@ class AccountInfoPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ctrl = Get.put(AccountInfoController());
+    final ctrl = Get.find<AccountInfoController>();
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     final Color fieldBg = isDark

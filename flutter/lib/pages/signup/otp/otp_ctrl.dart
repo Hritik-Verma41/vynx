@@ -12,6 +12,7 @@ import 'package:vynx/pages/signup/setup_on_signup/setup_on_signup_ctrl.dart';
 import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/cloudinary_service.dart';
 import 'package:vynx/routes/app_routes.dart';
+import 'package:vynx/services/auth_timer_service.dart';
 import 'package:vynx/services/token_service.dart';
 
 class OtpCtrl extends GetxController {
@@ -190,6 +191,7 @@ class OtpCtrl extends GetxController {
 
           if (access != null && refresh != null) {
             await tokenService.saveTokens(access, refresh);
+            Get.find<AuthTimerService>().startTokenTimer();
             await userCtrl.fetchProfile();
             Get.offAllNamed(Routes.vynxhub);
           } else {

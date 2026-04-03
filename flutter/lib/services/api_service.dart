@@ -10,6 +10,8 @@ import 'package:vynx/widgets/vynx_alert_popup.dart';
 
 class ApiService extends GetxService {
   late Dio _dio;
+  Future<bool>? _refreshInFlight;
+  bool _isSessionDialogShowing = false;
 
   Dio get dio => _dio;
 
@@ -26,40 +28,76 @@ class ApiService extends GetxService {
       BaseOptions(baseUrl: baseUrl, connectTimeout: Duration(seconds: 10)),
     );
 
-    void handleLogoutConflict() {
-      Get.find<TokenService>().clearTokens();
+    Future<void> handleLogoutConflict() async {
+      await Get.find<TokenService>().clearTokens();
+
+      // If we're already on the login screen, don't force a route reset.
+      if (Get.currentRoute == Routes.login) {
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
+        return;
+      }
+
+      if (_isSessionDialogShowing) return;
+      _isSessionDialogShowing = true;
+
       Get.dialog(
         VynxAlertPopup(
           title: "Session Conflict",
           message:
               "You have been logged in on another device. Please log in again to continue.",
           confirmBtnText: 'Back to Login',
-          onConfirm: () => Get.offAllNamed(Routes.login),
+          onConfirm: () {
+            if (Get.isDialogOpen ?? false) Get.back();
+            if (Get.currentRoute != Routes.login) {
+              Get.offAllNamed(Routes.login);
+            }
+          },
         ),
         barrierDismissible: false,
-      );
+      ).whenComplete(() => _isSessionDialogShowing = false);
     }
 
-    Future<void> retryWithRefresh(
-      DioException e,
-      ErrorInterceptorHandler handler,
-    ) async {
-      final refreshToken = await Get.find<TokenService>().getRefreshToken();
-      if (refreshToken == null) return handler.next(e);
+    Future<bool> refreshTokens() {
+      return _refreshInFlight ??= () async {
+        try {
+          final tokenService = Get.find<TokenService>();
+          final refreshToken = await tokenService.getRefreshToken();
+          if (refreshToken == null) return false;
 
-      try {
-        final refreshRes = await Dio().post(
-          "${_dio.options.baseUrl}${ApiUrls.refreshToken}",
-          data: {'refreshToken': refreshToken},
-        );
+          final refreshDio = Dio(
+            BaseOptions(
+              baseUrl: _dio.options.baseUrl,
+              connectTimeout: _dio.options.connectTimeout,
+              receiveTimeout: _dio.options.receiveTimeout,
+              sendTimeout: _dio.options.sendTimeout,
+            ),
+          );
 
-        if (refreshRes.statusCode == 200) {
-          final retryResponse = await _dio.fetch(e.requestOptions);
-          return handler.resolve(retryResponse);
+          final refreshRes = await refreshDio.post(
+            ApiUrls.refreshToken,
+            data: {'refreshToken': refreshToken},
+          );
+
+          if (refreshRes.statusCode != 200) return false;
+
+          final access = refreshRes.headers
+              .value('Authorization')
+              ?.replaceFirst('Bearer ', '');
+          final refresh = refreshRes.headers.value('x-refresh-token');
+          if (access != null && refresh != null) {
+            await tokenService.saveTokens(access, refresh);
+            return true;
+          }
+
+          return false;
+        } catch (_) {
+          return false;
+        } finally {
+          _refreshInFlight = null;
         }
-      } catch (err) {
-        handleLogoutConflict();
-      }
+      }();
     }
 
     _dio.interceptors.add(
@@ -84,16 +122,58 @@ class ApiService extends GetxService {
 
           return handler.next(response);
         },
-        onError: (DioException e, handler) {
-          if (e.response?.statusCode == 401) {
-            retryWithRefresh(e, handler);
-            return;
+        onError: (DioException e, handler) async {
+          final int? status = e.response?.statusCode;
+
+          if (status == 403) {
+            await handleLogoutConflict();
+            return handler.next(e);
           }
-          if (e.response?.statusCode == 403) {
-            handleLogoutConflict();
-            return;
+
+          if (status != 401) return handler.next(e);
+
+          final path = e.requestOptions.path;
+          if (path.endsWith(ApiUrls.authLogin) ||
+              path.endsWith(ApiUrls.authSignup) ||
+              path.endsWith(ApiUrls.refreshToken)) {
+            return handler.next(e);
           }
-          return handler.next(e);
+
+          final refreshToken = await Get.find<TokenService>().getRefreshToken();
+          if (refreshToken == null) {
+            // Not logged in (or tokens cleared). Treat as a normal 401.
+            return handler.next(e);
+          }
+
+          // If refresh itself fails, don't recursively attempt to refresh.
+          if (e.requestOptions.path.endsWith(ApiUrls.refreshToken)) {
+            await handleLogoutConflict();
+            return handler.next(e);
+          }
+
+          const retryKey = '__vynx_retried';
+          if (e.requestOptions.extra[retryKey] == true) {
+            return handler.next(e);
+          }
+
+          final refreshed = await refreshTokens();
+          if (!refreshed) {
+            await handleLogoutConflict();
+            return handler.next(e);
+          }
+
+          final newAccess = await Get.find<TokenService>().getAccessToken();
+          e.requestOptions.extra[retryKey] = true;
+          if (newAccess != null) {
+            e.requestOptions.headers['Authorization'] = 'Bearer $newAccess';
+          }
+
+          try {
+            final retryResponse = await _dio.fetch(e.requestOptions);
+            return handler.resolve(retryResponse);
+          } catch (_) {
+            return handler.next(e);
+          }
         },
       ),
     );

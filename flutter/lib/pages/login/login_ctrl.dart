@@ -6,6 +6,7 @@ import 'package:vynx/controllers/user_controller.dart';
 import 'package:vynx/routes/app_routes.dart';
 import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/auth_service.dart';
+import 'package:vynx/services/auth_timer_service.dart';
 import 'package:vynx/services/token_service.dart';
 
 class LoginCtrl extends GetxController {
@@ -54,7 +55,8 @@ class LoginCtrl extends GetxController {
         final refresh = response.headers.value('x-refresh-token');
 
         if (access != null && refresh != null) {
-          tokenServive.saveTokens(access, refresh);
+          await tokenServive.saveTokens(access, refresh);
+          Get.find<AuthTimerService>().startTokenTimer();
           await userCtrl.fetchProfile();
           Get.offAllNamed(Routes.vynxhub);
         }

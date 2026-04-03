@@ -8,7 +8,7 @@ class VynxHubPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(VynxHubController());
+    final controller = Get.find<VynxHubController>();
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(

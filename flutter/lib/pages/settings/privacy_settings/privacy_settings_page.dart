@@ -7,7 +7,7 @@ class PrivacySettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(PrivacySettingsController());
+    final controller = Get.find<PrivacySettingsController>();
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
