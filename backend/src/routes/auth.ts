@@ -225,10 +225,19 @@ authRouter.post('/refresh-token', async (req: Request, res: Response) => {
 
         const user = await User.findById(decoded.id);
 
-        if (!user || user.refreshToken !== refreshToken) {
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                code: "REFRESH_TOKEN_INVALID",
+                message: "Invalid refresh token"
+            });
+        }
+
+        if (user.refreshToken !== refreshToken) {
             return res.status(403).json({
                 success: false,
-                message: "Invalid or expired refresh token"
+                code: "SESSION_CONFLICT",
+                message: "Session conflict. Please login again."
             });
         }
 
@@ -245,7 +254,11 @@ authRouter.post('/refresh-token', async (req: Request, res: Response) => {
         console.log(`Refresh-Token error: ${error.message}`);
 
         if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
-            return res.status(403).json({ success: false, message: "Session expired. Please login again." });
+            return res.status(401).json({
+                success: false,
+                code: "REFRESH_TOKEN_EXPIRED",
+                message: "Session expired. Please login again."
+            });
         }
 
         res.status(500).json({
