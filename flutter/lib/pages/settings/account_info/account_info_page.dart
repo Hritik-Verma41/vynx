@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:vynx/pages/settings/account_info/account_info_controller.dart';
+import 'package:vynx/routes/app_routes.dart';
 
 class AccountInfoPage extends StatelessWidget {
   const AccountInfoPage({super.key});
@@ -526,6 +527,14 @@ class AccountInfoPage extends StatelessWidget {
       child: Wrap(
         children: [
           ListTile(
+            leading: const Icon(Icons.visibility_outlined, color: Colors.purple),
+            title: const Text("Preview Profile Picture"),
+            onTap: () {
+              Get.back();
+              _openProfilePreview(ctrl);
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.photo_library, color: Colors.purple),
             title: const Text("Gallery"),
             onTap: () {
@@ -545,4 +554,52 @@ class AccountInfoPage extends StatelessWidget {
       ),
     ),
   );
+
+  void _openProfilePreview(AccountInfoController ctrl) {
+    if (ctrl.selectedImagePath.value.isNotEmpty) {
+      Get.toNamed(
+        Routes.profileImageViewer,
+        arguments: {
+          'title': 'Profile Picture',
+          'type': 'file',
+          'value': ctrl.selectedImagePath.value,
+        },
+      );
+      return;
+    }
+
+    if (ctrl.selectedDefaultImage.value.isNotEmpty) {
+      Get.toNamed(
+        Routes.profileImageViewer,
+        arguments: {
+          'title': 'Profile Picture',
+          'type': 'asset',
+          'value': 'assets/images/${ctrl.selectedDefaultImage.value}',
+        },
+      );
+      return;
+    }
+
+    final profile = ctrl.userCtrl.user.value?.profileImage ?? '';
+    if (profile.startsWith('http')) {
+      Get.toNamed(
+        Routes.profileImageViewer,
+        arguments: {
+          'title': 'Profile Picture',
+          'type': 'network',
+          'value': profile,
+        },
+      );
+      return;
+    }
+
+    Get.toNamed(
+      Routes.profileImageViewer,
+      arguments: {
+        'title': 'Profile Picture',
+        'type': 'asset',
+        'value': 'assets/images/default-profile-male-1.png',
+      },
+    );
+  }
 }

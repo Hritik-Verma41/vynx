@@ -143,7 +143,10 @@ class ContactsController extends GetxController {
 
       final res = await _dio.post(
         ApiUrls.contactsMatchPhonebook,
-        data: {'phoneNumbers': phones},
+        data: {
+          'phoneNumbers': phones,
+          'defaultCountryCode': _defaultDialCode(),
+        },
       );
 
       if (res.statusCode != 200) return;
@@ -188,6 +191,40 @@ class ContactsController extends GetxController {
       );
     } finally {
       isSyncingPhonebook.value = false;
+    }
+  }
+
+  String _defaultDialCode() {
+    final cc = (Get.deviceLocale?.countryCode ?? 'IN').toUpperCase();
+    switch (cc) {
+      case 'IN':
+        return '91';
+      case 'US':
+      case 'CA':
+        return '1';
+      case 'GB':
+        return '44';
+      case 'AU':
+        return '61';
+      case 'SG':
+        return '65';
+      case 'AE':
+        return '971';
+      default:
+        return '';
+    }
+  }
+
+  Future<bool> removeContact(String contactId) async {
+    try {
+      final res = await _dio.delete('${ApiUrls.contactsBase}/$contactId');
+      if (res.statusCode == 200) {
+        contacts.removeWhere((c) => c.id == contactId);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
     }
   }
 

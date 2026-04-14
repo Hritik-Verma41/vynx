@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:vynx/models/contact_model.dart';
+import 'package:vynx/pages/contacts/contacts_controller.dart';
+import 'package:vynx/routes/app_routes.dart';
+import 'package:vynx/widgets/vynx_alert_popup.dart';
 
 class ContactInfoPage extends StatelessWidget {
   const ContactInfoPage({super.key});
@@ -10,6 +13,7 @@ class ContactInfoPage extends StatelessWidget {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final ContactModel? contact = Get.arguments as ContactModel?;
     final u = contact?.contactUser;
+    final contactsCtrl = Get.find<ContactsController>();
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -55,25 +59,41 @@ class ContactInfoPage extends StatelessWidget {
                         decoration: _glass(isDark),
                         child: Column(
                           children: [
-                            CircleAvatar(
-                              radius: 46,
-                              backgroundColor: Colors.purple.withValues(
-                                alpha: 0.18,
+                            GestureDetector(
+                              onTap: () {
+                                Get.toNamed(
+                                  Routes.profileImageViewer,
+                                  arguments: {
+                                    'title': 'Contact Info',
+                                    'type':
+                                        (u.profileImage != null &&
+                                            u.profileImage!.isNotEmpty)
+                                        ? 'network'
+                                        : 'none',
+                                    'value': u.profileImage ?? '',
+                                  },
+                                );
+                              },
+                              child: CircleAvatar(
+                                radius: 46,
+                                backgroundColor: Colors.purple.withValues(
+                                  alpha: 0.18,
+                                ),
+                                backgroundImage:
+                                    (u.profileImage != null &&
+                                        u.profileImage!.isNotEmpty)
+                                    ? NetworkImage(u.profileImage!)
+                                    : null,
+                                child:
+                                    (u.profileImage == null ||
+                                        u.profileImage!.isEmpty)
+                                    ? const Icon(
+                                        Icons.person,
+                                        size: 42,
+                                        color: Colors.purple,
+                                      )
+                                    : null,
                               ),
-                              backgroundImage:
-                                  (u.profileImage != null &&
-                                      u.profileImage!.isNotEmpty)
-                                  ? NetworkImage(u.profileImage!)
-                                  : null,
-                              child:
-                                  (u.profileImage == null ||
-                                      u.profileImage!.isEmpty)
-                                  ? const Icon(
-                                      Icons.person,
-                                      size: 42,
-                                      color: Colors.purple,
-                                    )
-                                  : null,
                             ),
                             const SizedBox(height: 14),
                             Text(
@@ -168,6 +188,32 @@ class ContactInfoPage extends StatelessWidget {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        decoration: _glass(isDark),
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.person_remove_outlined,
+                            color: Colors.redAccent,
+                          ),
+                          title: const Text(
+                            "Remove Contact",
+                            style: TextStyle(
+                              color: Colors.redAccent,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          subtitle: Text(
+                            "This will remove contact from your list.",
+                            style: TextStyle(
+                              color: isDark ? Colors.white54 : Colors.black54,
+                              fontSize: 12,
+                            ),
+                          ),
+                          onTap: () => _confirmRemove(contact!, contactsCtrl),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -220,6 +266,48 @@ class ContactInfoPage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _confirmRemove(ContactModel contact, ContactsController ctrl) {
+    Get.dialog(
+      VynxAlertPopup(
+        title: "Remove Contact",
+        message: "Do you want to remove ${contact.contactUser.fullName}?",
+        confirmBtnText: "Remove",
+        enableCancel: true,
+        onConfirm: () async {
+          if (Get.isDialogOpen ?? false) Get.back();
+          final ok = await ctrl.removeContact(contact.id);
+
+          if (ok) {
+            if (Get.currentRoute == Routes.contactInfo) {
+              Get.back();
+            }
+            Get.dialog(
+              VynxAlertPopup(
+                title: "Removed",
+                message: "${contact.contactUser.fullName} was removed.",
+                confirmBtnText: "OK",
+                onConfirm: () {
+                  if (Get.isDialogOpen ?? false) Get.back();
+                },
+              ),
+            );
+          } else {
+            Get.dialog(
+              VynxAlertPopup(
+                title: "Failed",
+                message: "Unable to remove contact. Please try again.",
+                confirmBtnText: "OK",
+                onConfirm: () {
+                  if (Get.isDialogOpen ?? false) Get.back();
+                },
+              ),
+            );
+          }
+        },
       ),
     );
   }
