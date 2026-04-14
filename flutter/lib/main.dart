@@ -59,6 +59,9 @@ Future<void> startApp() async {
   await pushService.initialize();
 
   runApp(MyApp(initalRoute: isSessionValid ? Routes.vynxhub : Routes.login));
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    pushService.onAppReady();
+  });
 }
 
 class MyApp extends StatelessWidget {
