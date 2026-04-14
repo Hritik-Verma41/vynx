@@ -34,6 +34,9 @@ class AccountInfoController extends GetxController {
   var showStatusError = false.obs;
 
   var isSubmitEnabled = false.obs;
+  var selectedDialCode = "91".obs;
+  var selectedIsoCode = "IN".obs;
+  var fullPhoneE164 = "".obs;
 
   late TextEditingController firstNameController;
   late TextEditingController lastNameController;
@@ -66,12 +69,23 @@ class AccountInfoController extends GetxController {
     customStatusController = TextEditingController();
 
     initialPhone = u?.phoneNumber ?? "";
-    String digitsOnly = initialPhone.replaceAll(RegExp(r'\D'), '');
-    phoneController = TextEditingController(
-      text: digitsOnly.length >= 10
-          ? digitsOnly.substring(digitsOnly.length - 10)
-          : digitsOnly,
-    );
+    if (initialPhone.startsWith('+91')) {
+      selectedDialCode.value = "91";
+      selectedIsoCode.value = "IN";
+      final local = initialPhone.substring(3);
+      phoneController = TextEditingController(text: local);
+      fullPhoneE164.value = initialPhone;
+    } else {
+      String digitsOnly = initialPhone.replaceAll(RegExp(r'\D'), '');
+      phoneController = TextEditingController(
+        text: digitsOnly.length >= 10
+            ? digitsOnly.substring(digitsOnly.length - 10)
+            : digitsOnly,
+      );
+      fullPhoneE164.value = digitsOnly.isNotEmpty
+          ? "+${selectedDialCode.value}${phoneController.text.trim()}"
+          : "";
+    }
 
     selectedGender.value = u?.gender ?? 'male';
     _initStatus(u?.status);
@@ -121,19 +135,32 @@ class AccountInfoController extends GetxController {
     showStatusError.value = hasInteractedWithStatus.value && statusIsInvalid;
 
     bool statusValid = !isCustomStatus.value || customStatusText.isNotEmpty;
-    isSubmitEnabled.value =
-        name.isNotEmpty && phone.length >= 10 && statusValid;
+    isSubmitEnabled.value = name.isNotEmpty && phone.length >= 6 && statusValid;
+  }
+
+  String _digitsOnly(String input) => input.replaceAll(RegExp(r'[^0-9]'), '');
+
+  String _buildE164FromLocal() {
+    final local = _digitsOnly(phoneController.text.trim());
+    final dial = _digitsOnly(selectedDialCode.value);
+    if (local.isEmpty) return "";
+    return "+$dial$local";
+  }
+
+  String currentPhoneForSave() {
+    final fromField = fullPhoneE164.value.trim();
+    if (fromField.startsWith('+')) return fromField;
+    return _buildE164FromLocal();
   }
 
   Future<void> saveChanges() async {
     if (!isSubmitEnabled.value) return;
 
-    String currentPhone = phoneController.text.trim();
-
-    bool isPhoneChanged = !initialPhone.endsWith(currentPhone);
+    final String currentPhone = currentPhoneForSave();
+    final bool isPhoneChanged = initialPhone.trim() != currentPhone.trim();
 
     if (isPhoneChanged) {
-      await _verifyNewPhone("+91$currentPhone");
+      await _verifyNewPhone(currentPhone);
     } else {
       await _performDirectUpdate();
     }
@@ -230,7 +257,7 @@ class AccountInfoController extends GetxController {
     return {
       "firstName": firstNameController.text.trim(),
       "lastName": lastNameController.text.trim(),
-      "phoneNumber": phoneController.text.trim(),
+      "phoneNumber": currentPhoneForSave(),
       "gender": selectedGender.value,
       "status": isCustomStatus.value
           ? customStatusController.text.trim()
@@ -272,7 +299,7 @@ class AccountInfoController extends GetxController {
   }
 
   Future<void> startPhoneVerification() async {
-    String fullPhone = "+91${phoneController.text.trim()}";
+    final String fullPhone = currentPhoneForSave();
 
     isLoading.value = true;
     try {

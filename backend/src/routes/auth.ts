@@ -9,6 +9,24 @@ import { protect } from "../middlewares/authMiddleware";
 
 const authRouter: Router = Router();
 
+const normalizePhone = (raw: string): string => {
+    let value = String(raw || "").trim();
+    if (!value) return "";
+
+    value = value.replace(/[^\d+]/g, "");
+    if (value.startsWith("00")) value = `+${value.slice(2)}`;
+    if (!value.startsWith("+")) value = `+${value}`;
+    value = `+${value.replace(/[^\d]/g, "")}`;
+
+    return value.length >= 8 ? value : "";
+};
+
+const phoneVariants = (normalized: string): string[] => {
+    if (!normalized) return [];
+    const withoutPlus = normalized.startsWith("+") ? normalized.slice(1) : normalized;
+    return Array.from(new Set([normalized, withoutPlus]));
+};
+
 const sendAuthResponse = async (user: Document & IUser, res: Response, statusCode: number = 200) => {
     const { accessToken, refreshToken } = generateTokens(user._id.toString());
 
@@ -57,8 +75,20 @@ authRouter.post('/sign-up', async (req: Request, res: Response) => {
             });
         }
 
+        const normalizedPhone = normalizePhone(phoneNumber || "");
+        if (!normalizedPhone) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid phone number."
+            });
+        }
+
         let existingUser = await User.findOne({
-            $or: [{ firebaseUid }, { email }, { phoneNumber }]
+            $or: [
+                { firebaseUid },
+                { email },
+                { phoneNumber: { $in: phoneVariants(normalizedPhone) } }
+            ]
         });
 
         if (existingUser) {
@@ -78,7 +108,7 @@ authRouter.post('/sign-up', async (req: Request, res: Response) => {
         const newUser = new User({
             firebaseUid,
             email,
-            phoneNumber,
+            phoneNumber: normalizedPhone,
             firstName,
             lastName,
             profileImage,
