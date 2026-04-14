@@ -52,7 +52,9 @@
 		<key>NSFaceIDUsageDescription</key>
 		<string>Vynx needs Face ID to secure your conversations.</string>
 		<key>NSCameraUsageDescription</key>
-		<string>Vynx needs camera access to let you take a profile picture.</string>
+		<string>Vynx needs camera access to let you take images, videos and scan QR codes.</string>
+		<key>NSContactsUsageDescription</key>
+		<string>Contacts access is required to find friends on Vynx.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>Vynx needs photos access to let you upload a profile picture.</string>
 		<key>NSMicrophoneUsageDescription</key>

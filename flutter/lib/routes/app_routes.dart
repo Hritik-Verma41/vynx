@@ -10,4 +10,8 @@ abstract class Routes {
   static const settingsSecurity = '/settings/security';
   static const signup = '/signup';
   static const vynxhub = '/vynx-hub';
+
+  static const contacts = '/contacts';
+  static const myQr = '/contacts/my-qr';
+  static const scanQr = '/contacts/scan-qr';
 }

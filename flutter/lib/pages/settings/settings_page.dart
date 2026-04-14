@@ -154,7 +154,7 @@ class SettingsPage extends StatelessWidget {
                 ),
               ),
             IconButton(
-              onPressed: () {},
+              onPressed: () => Get.toNamed(Routes.myQr),
               icon: Icon(
                 Icons.qr_code,
                 color: isDark ? Colors.purple[200] : Colors.purple[700],

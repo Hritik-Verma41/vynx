@@ -7,10 +7,12 @@ import privacySettingsRouter from './routes/privacySettings';
 import notificationSettingsRouter from './routes/notificationSettings';
 import dataUsageSettingsRouter from './routes/dataUsageSettings';
 import conversationsRouter from './routes/conversations';
+import contactsRouter from './routes/contacts';
 
 const routesRouter: Router = Router();
 
 routesRouter.use('/auth', authRouter);
+routesRouter.use('/contacts', contactsRouter);
 routesRouter.use('/conversations', conversationsRouter);
 routesRouter.use('/notification-settings', notificationSettingsRouter);
 routesRouter.use('/privacy-settings', privacySettingsRouter);
