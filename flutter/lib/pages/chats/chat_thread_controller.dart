@@ -39,6 +39,7 @@ class ChatThreadController extends GetxController {
     super.onInit();
     conversation = Get.arguments as ConversationPreviewModel;
     myUserId = Get.find<UserController>().user.value?.id ?? '';
+    _socket.connect();
     fetchMessages();
     _bindSocket();
   }
@@ -366,6 +367,7 @@ class ChatThreadController extends GetxController {
   Future<void> _sendPayload(Map<String, dynamic> payload) async {
     isSending.value = true;
     try {
+      await _socket.connect();
       final ack = await _socket.emitWithAck(
         'message:send',
         payload: {'conversationId': conversation.id, ...payload},
