@@ -167,7 +167,7 @@ class ChatsPage extends StatelessWidget {
                       ),
                     );
                   },
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemCount: list.length,
                 ),
               );

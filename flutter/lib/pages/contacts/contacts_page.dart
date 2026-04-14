@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:vynx/pages/contacts/contacts_controller.dart';
 import 'package:vynx/routes/app_routes.dart';
 
@@ -89,7 +90,7 @@ class ContactsPage extends StatelessWidget {
               child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 90),
                 itemCount: ctrl.contacts.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (_, i) {
                   final c = ctrl.contacts[i];
                   final u = c.contactUser;
@@ -155,7 +156,8 @@ class ContactsPage extends StatelessWidget {
     ContactsController ctrl,
     bool isDark,
   ) {
-    final phoneCtrl = TextEditingController();
+    String? fullPhone;
+    String iso = 'IN';
 
     Get.bottomSheet(
       Container(
@@ -181,12 +183,12 @@ class ContactsPage extends StatelessWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 14),
-            TextField(
-              controller: phoneCtrl,
+            IntlPhoneField(
+              initialCountryCode: iso,
+              invalidNumberMessage: 'Invalid mobile number',
               keyboardType: TextInputType.phone,
               decoration: InputDecoration(
                 hintText: "Enter phone number",
-                prefixIcon: const Icon(Icons.phone_outlined),
                 filled: true,
                 fillColor: isDark
                     ? Colors.white.withValues(alpha: 0.06)
@@ -196,14 +198,26 @@ class ContactsPage extends StatelessWidget {
                   borderSide: BorderSide.none,
                 ),
               ),
+              onChanged: (phone) {
+                fullPhone = phone.completeNumber.trim();
+              },
+              onCountryChanged: (country) {
+                iso = country.code;
+              },
             ),
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () async {
-                  final phone = phoneCtrl.text.trim();
-                  if (phone.isEmpty) return;
+                  final phone = (fullPhone ?? '').trim();
+                  if (phone.isEmpty || !phone.startsWith('+')) {
+                    Get.snackbar(
+                      "Invalid",
+                      "Please select country code and enter a valid number",
+                    );
+                    return;
+                  }
                   final ok = await ctrl.addByPhone(phone);
                   if (ok) Get.back();
                 },

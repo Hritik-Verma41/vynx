@@ -4,6 +4,24 @@ import { User } from "../models/User";
 
 const userRouter: Router = Router();
 
+const normalizePhone = (raw: string): string => {
+    let value = String(raw || "").trim();
+    if (!value) return "";
+
+    value = value.replace(/[^\d+]/g, "");
+    if (value.startsWith("00")) value = `+${value.slice(2)}`;
+    if (!value.startsWith("+")) value = `+${value}`;
+    value = `+${value.replace(/[^\d]/g, "")}`;
+
+    return value.length >= 8 ? value : "";
+};
+
+const phoneVariants = (normalized: string): string[] => {
+    if (!normalized) return [];
+    const withoutPlus = normalized.startsWith("+") ? normalized.slice(1) : normalized;
+    return Array.from(new Set([normalized, withoutPlus]));
+};
+
 userRouter.post('/link-provider', protect, async (req: Request, res: Response) => {
     try {
         const userId = (req as any).user._id;
@@ -70,13 +88,33 @@ userRouter.patch('/update-profile', protect, async (req: Request, res: Response)
             profileImage
         } = req.body;
 
+        const normalizedPhone = normalizePhone(phoneNumber || "");
+        if (!normalizedPhone) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid phone number."
+            });
+        }
+
+        const clash = await User.findOne({
+            _id: { $ne: userId },
+            phoneNumber: { $in: phoneVariants(normalizedPhone) }
+        });
+
+        if (clash) {
+            return res.status(409).json({
+                success: false,
+                message: "Phone number already in use."
+            });
+        }
+
         const updatedUser = await User.findByIdAndUpdate(
             userId,
             {
                 $set: {
                     firstName,
                     lastName,
-                    phoneNumber,
+                    phoneNumber: normalizedPhone,
                     gender,
                     status,
                     profileImage

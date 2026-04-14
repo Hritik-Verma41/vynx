@@ -311,7 +311,7 @@ class AccountInfoPage extends StatelessWidget {
     Color textColor,
   ) => IntlPhoneField(
     controller: ctrl.phoneController,
-    initialCountryCode: 'IN',
+    initialCountryCode: ctrl.selectedIsoCode.value,
     invalidNumberMessage: 'Invalid Mobile Number',
     dropdownTextStyle: TextStyle(color: textColor),
     style: TextStyle(color: textColor, fontSize: 14),
@@ -327,6 +327,14 @@ class AccountInfoPage extends StatelessWidget {
     ),
     onChanged: (phone) {
       ctrl.hasInteractedWithPhone.value = true;
+      ctrl.fullPhoneE164.value = phone.completeNumber.trim();
+      ctrl.selectedDialCode.value = phone.countryCode.replaceAll('+', '');
+      ctrl.selectedIsoCode.value = phone.countryISOCode;
+      ctrl.validateForm();
+    },
+    onCountryChanged: (country) {
+      ctrl.selectedDialCode.value = country.dialCode;
+      ctrl.selectedIsoCode.value = country.code;
       ctrl.validateForm();
     },
   );
