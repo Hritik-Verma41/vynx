@@ -6,6 +6,14 @@ import 'package:vynx/config/api_urls.dart';
 import 'package:vynx/models/contact_model.dart';
 import 'package:vynx/services/api_service.dart';
 
+enum QrAddOutcome { added, alreadyAdded, userNotFound, invalidQr, failed }
+
+class QrAddResult {
+  final QrAddOutcome outcome;
+  final String message;
+  const QrAddResult(this.outcome, this.message);
+}
+
 class ContactsController extends GetxController {
   final Dio _dio = Get.find<ApiService>().dio;
 
@@ -125,24 +133,47 @@ class ContactsController extends GetxController {
     }
   }
 
-  Future<bool> addByQr(String token) async {
+  Future<QrAddResult> addByQr(String token) async {
     try {
       final res = await _dio.post(
         ApiUrls.contactsAddByQr,
         data: {'token': token},
       );
+
       if (res.statusCode == 200 || res.statusCode == 201) {
         await fetchContacts();
-        Get.snackbar("Success", res.data['message'] ?? "Contact added by QR");
-        return true;
+        final bool alreadyExists = res.data['alreadyExists'] == true;
+        final String msg =
+            res.data['message']?.toString() ??
+            (alreadyExists ? "User already in contacts." : "Contact added.");
+        return QrAddResult(
+          alreadyExists ? QrAddOutcome.alreadyAdded : QrAddOutcome.added,
+          msg,
+        );
       }
-      return false;
+
+      return const QrAddResult(QrAddOutcome.failed, "Unable to add contact.");
     } catch (e) {
-      final msg = e is DioException
-          ? (e.response?.data?['message'] ?? "Invalid QR")
-          : "Invalid QR";
-      Get.snackbar("Error", "$msg");
-      return false;
+      if (e is DioException) {
+        final String msg =
+            e.response?.data?['message']?.toString() ?? "Invalid QR";
+        final lc = msg.toLowerCase();
+
+        if (lc.contains("already")) {
+          return QrAddResult(QrAddOutcome.alreadyAdded, msg);
+        }
+        if (lc.contains("not found")) {
+          return QrAddResult(QrAddOutcome.userNotFound, msg);
+        }
+        if (lc.contains("invalid") ||
+            lc.contains("expired") ||
+            lc.contains("qr")) {
+          return QrAddResult(QrAddOutcome.invalidQr, msg);
+        }
+        return QrAddResult(QrAddOutcome.failed, msg);
+      }
+
+      return const QrAddResult(QrAddOutcome.failed, "Unable to add contact.");
     }
   }
 }
