@@ -9,6 +9,21 @@ const contactsRouter: Router = Router();
 
 const QR_SECRET = process.env.CONTACT_QR_SECRET || process.env.JWT_ACCESS_SECRET || "vynx-contact-secret";
 
+async function ensureMutualContact(
+    ownerId: string,
+    contactUserId: string,
+    source: "phone" | "qr"
+) {
+    const exists = await Contact.findOne({ owner: ownerId, contactUser: contactUserId });
+    if (!exists) {
+        await Contact.create({
+            owner: ownerId,
+            contactUser: contactUserId,
+            source,
+        });
+    }
+}
+
 const normalizePhone = (raw: string): string => {
     let value = String(raw || "").trim();
     if (!value) return "";
@@ -74,16 +89,13 @@ contactsRouter.post("/add-by-phone", protect, async (req: Request, res: Response
             return res.status(200).json({ success: true, message: "Already in contacts.", contact: existing, alreadyExists: true });
         }
 
-        const contact = await Contact.create({
+        await ensureMutualContact(ownerId, contactUser._id.toString(), "phone");
+        await ensureMutualContact(contactUser._id.toString(), ownerId, "phone");
+
+        const populated = await Contact.findOne({
             owner: ownerId,
             contactUser: contactUser._id,
-            source: "phone",
-        });
-
-        const populated = await Contact.findById(contact._id).populate(
-            "contactUser",
-            "firstName lastName phoneNumber profileImage status"
-        );
+        }).populate("contactUser", "firstName lastName phoneNumber profileImage status");
 
         return res.status(201).json({ success: true, message: "Contact added.", contact: populated });
     } catch {
@@ -180,16 +192,13 @@ contactsRouter.post("/add-by-qr", protect, async (req: Request, res: Response) =
             return res.status(200).json({ success: true, message: "Already in contacts.", contact: existing, alreadyExists: true });
         }
 
-        const contact = await Contact.create({
+        await ensureMutualContact(ownerId, targetUser._id.toString(), "qr");
+        await ensureMutualContact(targetUser._id.toString(), ownerId, "qr");
+
+        const populated = await Contact.findOne({
             owner: ownerId,
             contactUser: targetUser._id,
-            source: "qr",
-        });
-
-        const populated = await Contact.findById(contact._id).populate(
-            "contactUser",
-            "firstName lastName phoneNumber profileImage status"
-        );
+        }).populate("contactUser", "firstName lastName phoneNumber profileImage status");
 
         return res.status(201).json({ success: true, message: "Contact added.", contact: populated });
     } catch (error: any) {
