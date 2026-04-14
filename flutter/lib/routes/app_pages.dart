@@ -1,6 +1,12 @@
 import 'package:get/get.dart';
 import 'package:vynx/middlewares/auth_middleware.dart';
 import 'package:vynx/pages/chats/chats_controller.dart';
+import 'package:vynx/pages/chats/chat_thread_controller.dart';
+import 'package:vynx/pages/chats/chat_thread_page.dart';
+import 'package:vynx/pages/chats/create_group_controller.dart';
+import 'package:vynx/pages/chats/create_group_page.dart';
+import 'package:vynx/pages/chats/group_info_controller.dart';
+import 'package:vynx/pages/chats/group_info_page.dart';
 import 'package:vynx/pages/contacts/contact_info_page.dart';
 import 'package:vynx/pages/contacts/contacts_controller.dart';
 import 'package:vynx/pages/contacts/contacts_page.dart';
@@ -89,6 +95,30 @@ class AppPages {
       }),
     ),
 
+    GetPage(
+      name: Routes.chatThread,
+      page: () => const ChatThreadPage(),
+      middlewares: [AuthMiddleware()],
+      binding: BindingsBuilder(() {
+        Get.lazyPut<ChatThreadController>(() => ChatThreadController());
+      }),
+    ),
+    GetPage(
+      name: Routes.createGroup,
+      page: () => const CreateGroupPage(),
+      middlewares: [AuthMiddleware()],
+      binding: BindingsBuilder(() {
+        Get.lazyPut<CreateGroupController>(() => CreateGroupController());
+      }),
+    ),
+    GetPage(
+      name: Routes.groupInfo,
+      page: () => const GroupInfoPage(),
+      middlewares: [AuthMiddleware()],
+      binding: BindingsBuilder(() {
+        Get.lazyPut<GroupInfoController>(() => GroupInfoController());
+      }),
+    ),
     GetPage(
       name: Routes.settingsDataUsage,
       page: () => const DataUsageSettingsPage(),

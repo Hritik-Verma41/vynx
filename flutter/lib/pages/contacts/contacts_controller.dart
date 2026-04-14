@@ -6,6 +6,7 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:get/get.dart';
 import 'package:vynx/config/api_urls.dart';
 import 'package:vynx/models/contact_model.dart';
+import 'package:vynx/models/conversation_preview_model.dart';
 import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/storage_service.dart';
 
@@ -445,6 +446,32 @@ class ContactsController extends GetxController {
         QrAddOutcome.failed,
         "Unable to process request.",
       );
+    }
+  }
+
+  Future<ConversationPreviewModel?> getOrCreateDirectConversation(
+    ContactUserModel other,
+  ) async {
+    try {
+      final res = await _dio.post('/conversations/with/${other.id}');
+      if (res.statusCode == 200 && res.data['conversation'] != null) {
+        final raw = Map<String, dynamic>.from(res.data['conversation']);
+        if (raw['members'] == null || raw['members'] is! List) {
+          raw['members'] = [
+            {
+              '_id': other.id,
+              'firstName': other.firstName,
+              'lastName': other.lastName,
+              'profileImage': other.profileImage,
+              'status': other.status,
+            },
+          ];
+        }
+        return ConversationPreviewModel.fromJson(raw);
+      }
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 

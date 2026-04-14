@@ -262,8 +262,17 @@ class ContactsPage extends StatelessWidget {
               _smallIcon(
                 icon: Icons.chat_bubble_outline_rounded,
                 color: isDark ? Colors.purple[200]! : Colors.purple[700]!,
-                onTap: () {
-                  Get.snackbar("Next", "Open chat with ${u.fullName}");
+                onTap: () async {
+                  final conversation = await Get.find<ContactsController>()
+                      .getOrCreateDirectConversation(u);
+                  if (conversation == null) {
+                    _showResultPopup(
+                      title: "Failed",
+                      message: "Could not open chat.",
+                    );
+                    return;
+                  }
+                  Get.toNamed(Routes.chatThread, arguments: conversation);
                 },
               ),
               const SizedBox(width: 4),

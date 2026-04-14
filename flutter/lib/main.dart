@@ -10,6 +10,7 @@ import 'package:vynx/services/auth_service.dart';
 import 'package:vynx/services/auth_timer_service.dart';
 import 'package:vynx/services/backgroud_sync_service.dart';
 import 'package:vynx/services/cloudinary_service.dart';
+import 'package:vynx/services/chat_socket_service.dart';
 import 'package:vynx/services/push_notification_service.dart';
 import 'package:vynx/services/storage_service.dart';
 import 'package:vynx/services/token_service.dart';
@@ -51,14 +52,19 @@ Future<void> startApp() async {
   }
 
   Get.put(AuthService(), permanent: true);
+  final chatSocketService = Get.put(ChatSocketService(), permanent: true);
   final pushService = Get.put(PushNotificationService(), permanent: true);
   await Get.putAsync(() async => CloudinaryService());
   Get.put(UserController(), permanent: true);
   Get.put(BackgroudSyncService());
   Get.put(AppLockService(), permanent: true);
   await pushService.initialize();
+  await chatSocketService.connect();
 
   runApp(MyApp(initalRoute: isSessionValid ? Routes.vynxhub : Routes.login));
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    pushService.onAppReady();
+  });
 }
 
 class MyApp extends StatelessWidget {

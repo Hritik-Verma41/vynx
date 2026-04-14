@@ -15,7 +15,9 @@ async function cleanupDeliveredTextMessages() {
     const deliveredTexts = await Message.find({
         kind: "text",
         deleteWhenDelivered: true,
-        deliveredAt: { $ne: null },
+        $expr: {
+            $eq: [{ $size: "$recipients" }, { $size: "$deliveredTo" }]
+        },
     }).select("_id");
 
     if (deliveredTexts.length === 0) return 0;
@@ -28,8 +30,10 @@ async function cleanupDeliveredTextMessages() {
 
 async function cleanupDownloadedFileMessages() {
     const downloadedFiles = await Message.find({
-        kind: "file",
-        downloadedAt: { $ne: null },
+        kind: { $in: ["file", "image", "video", "audio", "document"] },
+        $expr: {
+            $eq: [{ $size: "$recipients" }, { $size: "$downloadedBy" }]
+        },
     }).select("_id file.publicId");
 
     if (downloadedFiles.length === 0) return 0;

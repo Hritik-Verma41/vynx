@@ -28,4 +28,5 @@ class ApiUrls {
   static const contactsCancelRequest = '/contacts'; // + '/:id/cancel'
 
   static const conversations = '/conversations';
+  static const conversationsGroups = '/conversations/groups';
 }

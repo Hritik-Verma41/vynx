@@ -16,4 +16,7 @@ abstract class Routes {
   static const profileImageViewer = '/profile-image-viewer';
   static const myQr = '/contacts/my-qr';
   static const scanQr = '/contacts/scan-qr';
+  static const chatThread = '/chats/thread';
+  static const createGroup = '/chats/create-group';
+  static const groupInfo = '/chats/group-info';
 }
