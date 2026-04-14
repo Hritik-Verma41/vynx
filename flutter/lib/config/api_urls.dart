@@ -22,6 +22,9 @@ class ApiUrls {
   static const contactsMyQr = '/contacts/me/qr';
   static const contactsAddByQr = '/contacts/add-by-qr';
   static const contactsBase = '/contacts';
+  static const contactsAcceptRequest = '/contacts'; // + '/:id/accept'
+  static const contactsRejectRequest = '/contacts'; // + '/:id/reject'
+  static const contactsCancelRequest = '/contacts'; // + '/:id/cancel'
 
   static const conversations = '/conversations';
 }

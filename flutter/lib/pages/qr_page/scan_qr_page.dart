@@ -61,12 +61,30 @@ class _ScanQrPageState extends State<ScanQrPage> {
     final result = await ctrl.addByQr(token);
 
     switch (result.outcome) {
-      case QrAddOutcome.added:
-        Get.offNamed(Routes.contacts);
+      case QrAddOutcome.requestSent:
+        _showAlert(
+          title: "Request Sent",
+          message: result.message,
+          goToContactsAfterClose: true,
+        );
+        return;
+      case QrAddOutcome.requestAccepted:
+        _showAlert(
+          title: "Request Accepted",
+          message: result.message,
+          goToContactsAfterClose: true,
+        );
         return;
       case QrAddOutcome.alreadyAdded:
         _showAlert(
           title: "Already Added",
+          message: result.message,
+          goToContactsAfterClose: true,
+        );
+        return;
+      case QrAddOutcome.alreadyRequested:
+        _showAlert(
+          title: "Pending Request",
           message: result.message,
           goToContactsAfterClose: true,
         );

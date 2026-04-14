@@ -6,23 +6,7 @@ import { Contact } from "../models/Contact";
 import { User } from "../models/User";
 
 const contactsRouter: Router = Router();
-
 const QR_SECRET = process.env.CONTACT_QR_SECRET || process.env.JWT_ACCESS_SECRET || "vynx-contact-secret";
-
-async function ensureMutualContact(
-    ownerId: string,
-    contactUserId: string,
-    source: "phone" | "qr"
-) {
-    const exists = await Contact.findOne({ owner: ownerId, contactUser: contactUserId });
-    if (!exists) {
-        await Contact.create({
-            owner: ownerId,
-            contactUser: contactUserId,
-            source,
-        });
-    }
-}
 
 const digitsOnly = (raw: string): string =>
     String(raw || "").replace(/[^\d]/g, "");
@@ -75,7 +59,6 @@ const buildPhonebookCandidates = (
             candidates.add(`+${cc}${digits}`);
             candidates.add(`${cc}${digits}`);
         } else if (digits.length === 10) {
-            // Safe fallback for common local format without country code.
             candidates.add(`+91${digits}`);
             candidates.add(`91${digits}`);
         }
@@ -85,6 +68,60 @@ const buildPhonebookCandidates = (
 };
 
 const getUserId = (req: Request): string => (req as any).user._id.toString();
+
+async function setPendingPair(
+    requesterId: string,
+    targetId: string,
+    source: "phone" | "qr"
+) {
+    await Contact.findOneAndUpdate(
+        { owner: requesterId, contactUser: targetId },
+        {
+            $set: {
+                source,
+                relationStatus: "pending_outgoing",
+                requestedBy: requesterId
+            }
+        },
+        { upsert: true, new: true, runValidators: true }
+    );
+
+    await Contact.findOneAndUpdate(
+        { owner: targetId, contactUser: requesterId },
+        {
+            $set: {
+                source,
+                relationStatus: "pending_incoming",
+                requestedBy: requesterId
+            }
+        },
+        { upsert: true, new: true, runValidators: true }
+    );
+}
+
+async function setAcceptedPair(userA: string, userB: string) {
+    await Contact.findOneAndUpdate(
+        { owner: userA, contactUser: userB },
+        {
+            $set: {
+                relationStatus: "accepted",
+                requestedBy: null
+            }
+        },
+        { upsert: true, new: true, runValidators: true }
+    );
+
+    await Contact.findOneAndUpdate(
+        { owner: userB, contactUser: userA },
+        {
+            $set: {
+                relationStatus: "accepted",
+                requestedBy: null
+            }
+        },
+        { upsert: true, new: true, runValidators: true }
+    );
+}
 
 contactsRouter.get("/", protect, async (req: Request, res: Response) => {
     try {
@@ -100,6 +137,35 @@ contactsRouter.get("/", protect, async (req: Request, res: Response) => {
     }
 });
 
+async function createOrTransitionRequest(
+    ownerId: string,
+    targetId: string,
+    source: "phone" | "qr"
+) {
+    const existing = await Contact.findOne({ owner: ownerId, contactUser: targetId });
+
+    if (!existing) {
+        await setPendingPair(ownerId, targetId, source);
+        return { code: "REQUEST_SENT", message: "Contact request sent." };
+    }
+
+    if (existing.relationStatus === "accepted") {
+        return { code: "ALREADY_ADDED", message: "Already in contacts." };
+    }
+
+    if (existing.relationStatus === "pending_outgoing") {
+        return { code: "REQUEST_PENDING", message: "Contact request already pending." };
+    }
+
+    if (existing.relationStatus === "pending_incoming") {
+        await setAcceptedPair(ownerId, targetId);
+        return { code: "REQUEST_ACCEPTED", message: "Request accepted. Contact added." };
+    }
+
+    await setPendingPair(ownerId, targetId, source);
+    return { code: "REQUEST_SENT", message: "Contact request sent." };
+}
+
 contactsRouter.post("/add-by-phone", protect, async (req: Request, res: Response) => {
     try {
         const ownerId = getUserId(req);
@@ -114,8 +180,9 @@ contactsRouter.post("/add-by-phone", protect, async (req: Request, res: Response
             return res.status(400).json({ success: false, message: "Invalid phone number." });
         }
 
-        const variants = phoneVariants(normalized);
-        const contactUser = await User.findOne({ phoneNumber: { $in: variants } });
+        const contactUser = await User.findOne({
+            phoneNumber: { $in: phoneVariants(normalized) }
+        });
 
         if (!contactUser) {
             return res.status(404).json({ success: false, message: "No Vynx user found with this phone number." });
@@ -125,20 +192,23 @@ contactsRouter.post("/add-by-phone", protect, async (req: Request, res: Response
             return res.status(400).json({ success: false, message: "You cannot add yourself." });
         }
 
-        const existing = await Contact.findOne({ owner: ownerId, contactUser: contactUser._id });
-        if (existing) {
-            return res.status(200).json({ success: true, message: "Already in contacts.", contact: existing, alreadyExists: true });
-        }
+        const result = await createOrTransitionRequest(
+            ownerId,
+            contactUser._id.toString(),
+            "phone"
+        );
 
-        await ensureMutualContact(ownerId, contactUser._id.toString(), "phone");
-        await ensureMutualContact(contactUser._id.toString(), ownerId, "phone");
-
-        const populated = await Contact.findOne({
+        const ownerContact = await Contact.findOne({
             owner: ownerId,
-            contactUser: contactUser._id,
+            contactUser: contactUser._id
         }).populate("contactUser", "firstName lastName phoneNumber profileImage status");
 
-        return res.status(201).json({ success: true, message: "Contact added.", contact: populated });
+        return res.status(200).json({
+            success: true,
+            code: result.code,
+            message: result.message,
+            contact: ownerContact
+        });
     } catch {
         return res.status(500).json({ success: false, message: "Internal Server Error" });
     }
@@ -174,15 +244,127 @@ contactsRouter.post("/match-phonebook", protect, async (req: Request, res: Respo
             "firstName lastName phoneNumber profileImage status"
         );
 
-        const existingContacts = await Contact.find({ owner: ownerId }).select("contactUser");
-        const existingSet = new Set(existingContacts.map((c) => c.contactUser.toString()));
+        const existingRelations = await Contact.find({
+            owner: ownerId,
+            contactUser: { $in: users.map((u) => u._id) }
+        }).select("_id contactUser relationStatus");
 
-        const matches = users.map((u) => ({
-            user: u,
-            isAlreadyContact: existingSet.has(u._id.toString()),
-        }));
+        const relationMap = new Map(
+            existingRelations.map((r) => [
+                r.contactUser.toString(),
+                {
+                    contactId: r._id.toString(),
+                    relationStatus: r.relationStatus
+                }
+            ])
+        );
+
+        const matches = users.map((u) => {
+            const relation = relationMap.get(u._id.toString());
+            return {
+                user: u,
+                relationStatus: relation?.relationStatus ?? "none",
+                contactId: relation?.contactId ?? null
+            };
+        });
 
         return res.status(200).json({ success: true, matches });
+    } catch {
+        return res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+});
+
+contactsRouter.post("/:contactId/accept", protect, async (req: Request, res: Response) => {
+    try {
+        const ownerId = getUserId(req);
+        const { contactId } = req.params;
+
+        const incoming = await Contact.findOne({
+            _id: contactId,
+            owner: ownerId,
+            relationStatus: "pending_incoming"
+        });
+
+        if (!incoming) {
+            return res.status(404).json({ success: false, message: "Pending request not found." });
+        }
+
+        await setAcceptedPair(ownerId, incoming.contactUser.toString());
+
+        return res.status(200).json({
+            success: true,
+            code: "REQUEST_ACCEPTED",
+            message: "Contact request accepted."
+        });
+    } catch {
+        return res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+});
+
+contactsRouter.post("/:contactId/reject", protect, async (req: Request, res: Response) => {
+    try {
+        const ownerId = getUserId(req);
+        const { contactId } = req.params;
+
+        const incoming = await Contact.findOne({
+            _id: contactId,
+            owner: ownerId,
+            relationStatus: "pending_incoming"
+        });
+
+        if (!incoming) {
+            return res.status(404).json({ success: false, message: "Pending request not found." });
+        }
+
+        await Contact.findOneAndUpdate(
+            { owner: ownerId, contactUser: incoming.contactUser },
+            { $set: { relationStatus: "rejected", requestedBy: null } },
+            { new: true }
+        );
+
+        await Contact.findOneAndUpdate(
+            { owner: incoming.contactUser, contactUser: ownerId },
+            { $set: { relationStatus: "rejected", requestedBy: null } },
+            { new: true }
+        );
+
+        return res.status(200).json({
+            success: true,
+            code: "REQUEST_REJECTED",
+            message: "Contact request rejected."
+        });
+    } catch {
+        return res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+});
+
+contactsRouter.post("/:contactId/cancel", protect, async (req: Request, res: Response) => {
+    try {
+        const ownerId = getUserId(req);
+        const { contactId } = req.params;
+
+        const outgoing = await Contact.findOne({
+            _id: contactId,
+            owner: ownerId,
+            relationStatus: "pending_outgoing"
+        });
+
+        if (!outgoing) {
+            return res.status(404).json({ success: false, message: "Pending request not found." });
+        }
+
+        await Contact.deleteOne({ _id: outgoing._id, owner: ownerId });
+        await Contact.deleteMany({
+            owner: outgoing.contactUser,
+            contactUser: ownerId,
+            relationStatus: "pending_incoming"
+        });
+
+        return res.status(200).json({
+            success: true,
+            code: "REQUEST_CANCELED",
+            message: "Contact request canceled."
+        });
     } catch {
         return res.status(500).json({ success: false, message: "Internal Server Error" });
     }
@@ -199,8 +381,6 @@ contactsRouter.delete("/:contactId", protect, async (req: Request, res: Response
         }
 
         await Contact.deleteOne({ _id: existing._id, owner: ownerId });
-
-        // Keep reciprocal relation in sync because add flow creates both sides.
         await Contact.deleteMany({
             owner: existing.contactUser,
             contactUser: ownerId,
@@ -255,20 +435,23 @@ contactsRouter.post("/add-by-qr", protect, async (req: Request, res: Response) =
             return res.status(404).json({ success: false, message: "User not found." });
         }
 
-        const existing = await Contact.findOne({ owner: ownerId, contactUser: targetUser._id });
-        if (existing) {
-            return res.status(200).json({ success: true, message: "Already in contacts.", contact: existing, alreadyExists: true });
-        }
+        const result = await createOrTransitionRequest(
+            ownerId,
+            targetUser._id.toString(),
+            "qr"
+        );
 
-        await ensureMutualContact(ownerId, targetUser._id.toString(), "qr");
-        await ensureMutualContact(targetUser._id.toString(), ownerId, "qr");
-
-        const populated = await Contact.findOne({
+        const ownerContact = await Contact.findOne({
             owner: ownerId,
             contactUser: targetUser._id,
         }).populate("contactUser", "firstName lastName phoneNumber profileImage status");
 
-        return res.status(201).json({ success: true, message: "Contact added.", contact: populated });
+        return res.status(200).json({
+            success: true,
+            code: result.code,
+            message: result.message,
+            contact: ownerContact
+        });
     } catch (error: any) {
         if (error?.name === "TokenExpiredError") {
             return res.status(400).json({ success: false, message: "QR expired. Please try again." });
