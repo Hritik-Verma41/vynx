@@ -74,9 +74,10 @@ class _MyQrPageState extends State<MyQrPage> {
                   children: [
                     QrImageView(
                       data: payload,
+                      size: 280, // was 220
                       version: QrVersions.auto,
-                      size: 220,
                       backgroundColor: Colors.white,
+                      errorCorrectionLevel: QrErrorCorrectLevel.L,
                     ),
                     const SizedBox(height: 14),
                     Text(
