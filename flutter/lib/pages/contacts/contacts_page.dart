@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
+import 'package:vynx/models/contact_model.dart';
 import 'package:vynx/pages/contacts/contacts_controller.dart';
 import 'package:vynx/routes/app_routes.dart';
 import 'package:vynx/widgets/vynx_alert_popup.dart';
@@ -37,7 +38,7 @@ class ContactsPage extends StatelessWidget {
             () => IconButton(
               onPressed: ctrl.isSyncingPhonebook.value
                   ? null
-                  : ctrl.syncFromPhonebook,
+                  : () => ctrl.syncFromPhonebook(showSnackbars: true),
               icon: ctrl.isSyncingPhonebook.value
                   ? const SizedBox(
                       width: 20,
@@ -68,16 +69,20 @@ class ContactsPage extends StatelessWidget {
         ),
         child: SafeArea(
           child: Obx(() {
-            if (ctrl.isLoading.value) {
+            if (ctrl.isLoading.value && ctrl.contacts.isEmpty) {
               return const Center(
                 child: CircularProgressIndicator(color: Colors.purple),
               );
             }
 
-            if (ctrl.contacts.isEmpty) {
+            final requests = ctrl.incomingRequests;
+            final added = ctrl.addedContacts;
+            final options = ctrl.addableFromPhonebook;
+
+            if (requests.isEmpty && added.isEmpty && options.isEmpty) {
               return Center(
                 child: Text(
-                  "No contacts yet.\nUse + to add by phone or scan QR.",
+                  "No contacts yet.\nUse +, Scan QR, or Sync to discover people.",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: isDark ? Colors.white54 : Colors.black54,
@@ -87,101 +92,356 @@ class ContactsPage extends StatelessWidget {
             }
 
             return RefreshIndicator(
-              onRefresh: ctrl.fetchContacts,
-              child: ListView.separated(
+              onRefresh: ctrl.refreshAll,
+              child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 90),
-                itemCount: ctrl.contacts.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (_, i) {
-                  final c = ctrl.contacts[i];
-                  final u = c.contactUser;
-
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.05)
-                          : Colors.black.withValues(alpha: 0.03),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : Colors.black.withValues(alpha: 0.05),
-                      ),
-                    ),
-                    child: ListTile(
-                      onTap: () =>
-                          Get.toNamed(Routes.contactInfo, arguments: c),
-                      leading: CircleAvatar(
-                        radius: 24,
-                        backgroundColor: Colors.purple.withValues(alpha: 0.18),
-                        backgroundImage:
-                            (u.profileImage != null &&
-                                u.profileImage!.isNotEmpty)
-                            ? NetworkImage(u.profileImage!)
-                            : null,
-                        child:
-                            (u.profileImage == null || u.profileImage!.isEmpty)
-                            ? const Icon(Icons.person, color: Colors.purple)
-                            : null,
-                      ),
-                      title: Text(
-                        u.fullName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isDark ? Colors.white : Colors.black,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      subtitle: Text(
-                        u.status.isEmpty ? "Available" : u.status,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isDark ? Colors.white60 : Colors.black54,
-                          fontSize: 12,
-                        ),
-                      ),
-                      trailing: SizedBox(
-                        width: 72,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            _actionIcon(
-                              icon: Icons.chat_bubble_outline_rounded,
-                              color: isDark
-                                  ? Colors.purple[200]!
-                                  : Colors.purple[700]!,
-                              onTap: () {
-                                Get.snackbar(
-                                  "Next",
-                                  "Open chat with ${u.fullName}",
-                                );
-                              },
-                            ),
-                            const SizedBox(width: 4),
-                            _actionIcon(
-                              icon: Icons.call_outlined,
-                              color: isDark
-                                  ? Colors.purple[200]!
-                                  : Colors.purple[700]!,
-                              onTap: () {
-                                Get.snackbar(
-                                  "Next",
-                                  "Start call with ${u.fullName}",
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
+                children: [
+                  if (requests.isNotEmpty) ...[
+                    _sectionHeader("Requests", isDark),
+                    const SizedBox(height: 10),
+                    ...requests.map((c) => _requestTile(c, isDark, ctrl)),
+                    const SizedBox(height: 18),
+                  ],
+                  if (added.isNotEmpty) ...[
+                    _sectionHeader("Added Contacts", isDark),
+                    const SizedBox(height: 10),
+                    ...added.map((c) => _addedTile(c, isDark)),
+                    const SizedBox(height: 18),
+                  ],
+                  _sectionHeader("Add from Phonebook", isDark),
+                  const SizedBox(height: 10),
+                  if (options.isEmpty)
+                    _emptyCard(
+                      isDark,
+                      "No Vynx users found in your phonebook yet.",
+                    )
+                  else
+                    ...options.map((m) => _phonebookTile(m, isDark, ctrl)),
+                ],
               ),
             );
           }),
         ),
+      ),
+    );
+  }
+
+  Widget _sectionHeader(String title, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 6),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+          color: isDark ? Colors.purple[200] : Colors.purple[700],
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyCard(bool isDark, String text) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: _tileDecor(isDark),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: isDark ? Colors.white60 : Colors.black54,
+        ),
+      ),
+    );
+  }
+
+  Widget _requestTile(
+    ContactModel c,
+    bool isDark,
+    ContactsController ctrl,
+  ) {
+    final u = c.contactUser;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: _tileDecor(isDark),
+      child: ListTile(
+        leading: _avatar(u.profileImage),
+        title: Text(
+          u.fullName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          "Wants to add you",
+          style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
+        ),
+        trailing: SizedBox(
+          width: 84,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _smallIcon(
+                icon: Icons.close_rounded,
+                color: Colors.redAccent,
+                onTap: () async {
+                  final ok = await ctrl.rejectRequest(c.id);
+                  _showResultPopup(
+                    title: ok ? "Request Rejected" : "Failed",
+                    message: ok
+                        ? "Contact request rejected."
+                        : "Could not reject request.",
+                  );
+                },
+              ),
+              const SizedBox(width: 6),
+              _smallIcon(
+                icon: Icons.check_rounded,
+                color: Colors.green,
+                onTap: () async {
+                  final ok = await ctrl.acceptRequest(c.id);
+                  _showResultPopup(
+                    title: ok ? "Request Accepted" : "Failed",
+                    message: ok
+                        ? "Contact added successfully."
+                        : "Could not accept request.",
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _addedTile(ContactModel c, bool isDark) {
+    final u = c.contactUser;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: _tileDecor(isDark),
+      child: ListTile(
+        onTap: () => Get.toNamed(Routes.contactInfo, arguments: c),
+        leading: _avatar(u.profileImage),
+        title: Text(
+          u.fullName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          u.status.isEmpty ? "Available" : u.status,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: isDark ? Colors.white60 : Colors.black54,
+            fontSize: 12,
+          ),
+        ),
+        trailing: SizedBox(
+          width: 72,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _smallIcon(
+                icon: Icons.chat_bubble_outline_rounded,
+                color: isDark ? Colors.purple[200]! : Colors.purple[700]!,
+                onTap: () {
+                  Get.snackbar("Next", "Open chat with ${u.fullName}");
+                },
+              ),
+              const SizedBox(width: 4),
+              _smallIcon(
+                icon: Icons.call_outlined,
+                color: isDark ? Colors.purple[200]! : Colors.purple[700]!,
+                onTap: () {
+                  Get.snackbar("Next", "Start call with ${u.fullName}");
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _phonebookTile(
+    PhonebookMatchModel m,
+    bool isDark,
+    ContactsController ctrl,
+  ) {
+    final u = m.user;
+    final isPendingOutgoing = m.relationStatus == 'pending_outgoing';
+    final isPendingIncoming = m.relationStatus == 'pending_incoming';
+    final isRejected = m.relationStatus == 'rejected';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: _tileDecor(isDark),
+      child: ListTile(
+        leading: _avatar(u.profileImage),
+        title: Text(
+          u.fullName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          isPendingOutgoing
+              ? "Request pending"
+              : isPendingIncoming
+              ? "Sent you a request"
+              : (isRejected ? "Request was declined" : "Tap to send request"),
+          style: TextStyle(
+            color: isDark ? Colors.white60 : Colors.black54,
+            fontSize: 12,
+          ),
+        ),
+        trailing: _phonebookAction(m, isDark, ctrl),
+      ),
+    );
+  }
+
+  Widget _phonebookAction(
+    PhonebookMatchModel m,
+    bool isDark,
+    ContactsController ctrl,
+  ) {
+    if (m.relationStatus == 'pending_outgoing' && m.contactId != null) {
+      return SizedBox(
+        width: 80,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Icon(Icons.hourglass_top_rounded, color: Colors.orange[400], size: 18),
+            const SizedBox(width: 8),
+            _smallIcon(
+              icon: Icons.close_rounded,
+              color: Colors.redAccent,
+              onTap: () async {
+                final ok = await ctrl.cancelRequest(m.contactId!);
+                _showResultPopup(
+                  title: ok ? "Canceled" : "Failed",
+                  message: ok
+                      ? "Request canceled."
+                      : "Could not cancel request.",
+                );
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (m.relationStatus == 'pending_incoming' && m.contactId != null) {
+      return SizedBox(
+        width: 84,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            _smallIcon(
+              icon: Icons.close_rounded,
+              color: Colors.redAccent,
+              onTap: () async {
+                final ok = await ctrl.rejectRequest(m.contactId!);
+                _showResultPopup(
+                  title: ok ? "Request Rejected" : "Failed",
+                  message: ok
+                      ? "Contact request rejected."
+                      : "Could not reject request.",
+                );
+              },
+            ),
+            const SizedBox(width: 6),
+            _smallIcon(
+              icon: Icons.check_rounded,
+              color: Colors.green,
+              onTap: () async {
+                final ok = await ctrl.acceptRequest(m.contactId!);
+                _showResultPopup(
+                  title: ok ? "Request Accepted" : "Failed",
+                  message: ok
+                      ? "Contact added successfully."
+                      : "Could not accept request.",
+                );
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
+    return TextButton.icon(
+      onPressed: () async {
+        final phone = m.user.phoneNumber?.trim() ?? '';
+        if (phone.isEmpty) {
+          _showResultPopup(
+            title: "Missing Phone",
+            message: "This user doesn't have a valid phone number.",
+          );
+          return;
+        }
+
+        final result = await ctrl.addByPhone(phone);
+        _handlePhoneAddResult(result);
+      },
+      icon: const Icon(Icons.person_add_alt_1_rounded, size: 16),
+      label: const Text("Request"),
+      style: TextButton.styleFrom(
+        foregroundColor: isDark ? Colors.purple[200] : Colors.purple[700],
+      ),
+    );
+  }
+
+  BoxDecoration _tileDecor(bool isDark) {
+    return BoxDecoration(
+      color: isDark
+          ? Colors.white.withValues(alpha: 0.05)
+          : Colors.black.withValues(alpha: 0.03),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.1)
+            : Colors.black.withValues(alpha: 0.05),
+      ),
+    );
+  }
+
+  Widget _avatar(String? profileImage) {
+    return CircleAvatar(
+      radius: 24,
+      backgroundColor: Colors.purple.withValues(alpha: 0.18),
+      backgroundImage:
+          (profileImage != null && profileImage.isNotEmpty)
+          ? NetworkImage(profileImage)
+          : null,
+      child: (profileImage == null || profileImage.isEmpty)
+          ? const Icon(Icons.person, color: Colors.purple)
+          : null,
+    );
+  }
+
+  Widget _smallIcon({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: SizedBox(
+        width: 32,
+        height: 32,
+        child: Icon(icon, size: 19, color: color),
       ),
     );
   }
@@ -286,49 +546,10 @@ class ContactsPage extends StatelessWidget {
                             }
 
                             final result = await ctrl.addByPhone(phone);
-
-                            if (result.outcome == PhoneAddOutcome.added) {
-                              if (Get.isBottomSheetOpen ?? false) {
-                                Get.back();
-                              }
-                              _showResultPopup(
-                                title: "Contact Added",
-                                message: result.message,
-                              );
-                              return;
+                            if (Get.isBottomSheetOpen ?? false) {
+                              Get.back();
                             }
-
-                            if (result.outcome ==
-                                PhoneAddOutcome.alreadyAdded) {
-                              _showResultPopup(
-                                title: "Already Added",
-                                message: result.message,
-                              );
-                              return;
-                            }
-
-                            if (result.outcome ==
-                                PhoneAddOutcome.userNotFound) {
-                              _showResultPopup(
-                                title: "User Not Found",
-                                message: result.message,
-                              );
-                              return;
-                            }
-
-                            if (result.outcome ==
-                                PhoneAddOutcome.invalidPhone) {
-                              _showResultPopup(
-                                title: "Invalid Phone",
-                                message: result.message,
-                              );
-                              return;
-                            }
-
-                            _showResultPopup(
-                              title: "Unable to Add",
-                              message: result.message,
-                            );
+                            _handlePhoneAddResult(result);
                           }
                         : null,
                     style: ElevatedButton.styleFrom(
@@ -343,7 +564,7 @@ class ContactsPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text("Add"),
+                    child: const Text("Request"),
                   ),
                 ),
               ],
@@ -353,6 +574,32 @@ class ContactsPage extends StatelessWidget {
       ),
       isScrollControlled: true,
     );
+  }
+
+  void _handlePhoneAddResult(PhoneAddResult result) {
+    switch (result.outcome) {
+      case PhoneAddOutcome.requestSent:
+        _showResultPopup(title: "Request Sent", message: result.message);
+        return;
+      case PhoneAddOutcome.requestAccepted:
+        _showResultPopup(title: "Request Accepted", message: result.message);
+        return;
+      case PhoneAddOutcome.alreadyAdded:
+        _showResultPopup(title: "Already Added", message: result.message);
+        return;
+      case PhoneAddOutcome.alreadyRequested:
+        _showResultPopup(title: "Pending Request", message: result.message);
+        return;
+      case PhoneAddOutcome.userNotFound:
+        _showResultPopup(title: "User Not Found", message: result.message);
+        return;
+      case PhoneAddOutcome.invalidPhone:
+        _showResultPopup(title: "Invalid Phone", message: result.message);
+        return;
+      case PhoneAddOutcome.failed:
+        _showResultPopup(title: "Failed", message: result.message);
+        return;
+    }
   }
 
   void _showResultPopup({required String title, required String message}) {
@@ -368,22 +615,6 @@ class ContactsPage extends StatelessWidget {
         },
       ),
       barrierDismissible: false,
-    );
-  }
-
-  Widget _actionIcon({
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: onTap,
-      child: SizedBox(
-        width: 34,
-        height: 34,
-        child: Icon(icon, size: 20, color: color),
-      ),
     );
   }
 }

@@ -1,15 +1,31 @@
 import 'dart:developer';
+
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:get/get.dart';
 import 'package:vynx/config/api_urls.dart';
 import 'package:vynx/models/contact_model.dart';
 import 'package:vynx/services/api_service.dart';
 
-enum QrAddOutcome { added, alreadyAdded, userNotFound, invalidQr, failed }
+enum QrAddOutcome {
+  requestSent,
+  requestAccepted,
+  alreadyAdded,
+  alreadyRequested,
+  userNotFound,
+  invalidQr,
+  failed,
+}
 
-enum PhoneAddOutcome { added, alreadyAdded, userNotFound, invalidPhone, failed }
+enum PhoneAddOutcome {
+  requestSent,
+  requestAccepted,
+  alreadyAdded,
+  alreadyRequested,
+  userNotFound,
+  invalidPhone,
+  failed,
+}
 
 class QrAddResult {
   final QrAddOutcome outcome;
@@ -27,6 +43,7 @@ class ContactsController extends GetxController {
   final Dio _dio = Get.find<ApiService>().dio;
 
   final contacts = <ContactModel>[].obs;
+  final phonebookMatches = <PhonebookMatchModel>[].obs;
   final isLoading = false.obs;
   final isSyncingPhonebook = false.obs;
   final myQrPayload = RxnString();
@@ -34,8 +51,22 @@ class ContactsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchContacts();
+    refreshAll();
   }
+
+  Future<void> refreshAll() async {
+    await fetchContacts();
+    await syncFromPhonebook(showSnackbars: false);
+  }
+
+  List<ContactModel> get incomingRequests =>
+      contacts.where((c) => c.isIncomingPending).toList();
+
+  List<ContactModel> get addedContacts =>
+      contacts.where((c) => c.isAccepted).toList();
+
+  List<PhonebookMatchModel> get addableFromPhonebook =>
+      phonebookMatches.where((m) => m.relationStatus != 'accepted').toList();
 
   Future<void> fetchContacts() async {
     try {
@@ -54,6 +85,21 @@ class ContactsController extends GetxController {
     }
   }
 
+  PhoneAddResult _mapPhoneCode(String? code, String message) {
+    switch (code) {
+      case 'REQUEST_SENT':
+        return PhoneAddResult(PhoneAddOutcome.requestSent, message);
+      case 'REQUEST_ACCEPTED':
+        return PhoneAddResult(PhoneAddOutcome.requestAccepted, message);
+      case 'ALREADY_ADDED':
+        return PhoneAddResult(PhoneAddOutcome.alreadyAdded, message);
+      case 'REQUEST_PENDING':
+        return PhoneAddResult(PhoneAddOutcome.alreadyRequested, message);
+      default:
+        return PhoneAddResult(PhoneAddOutcome.failed, message);
+    }
+  }
+
   Future<PhoneAddResult> addByPhone(String phoneNumber) async {
     try {
       final res = await _dio.post(
@@ -62,30 +108,22 @@ class ContactsController extends GetxController {
       );
 
       if (res.statusCode == 200 || res.statusCode == 201) {
-        await fetchContacts();
-        final alreadyExists = res.data['alreadyExists'] == true;
-        final message =
-            res.data['message']?.toString() ??
-            (alreadyExists ? "Already in contacts." : "Contact added.");
-        return PhoneAddResult(
-          alreadyExists ? PhoneAddOutcome.alreadyAdded : PhoneAddOutcome.added,
-          message,
-        );
+        await refreshAll();
+        final message = res.data['message']?.toString() ?? "Request sent.";
+        return _mapPhoneCode(res.data['code']?.toString(), message);
       }
 
       return const PhoneAddResult(
         PhoneAddOutcome.failed,
-        "Failed to add contact.",
+        "Failed to process request.",
       );
     } catch (e) {
       if (e is DioException) {
         final msg =
-            e.response?.data?['message']?.toString() ?? "Failed to add contact";
+            e.response?.data?['message']?.toString() ??
+            "Failed to process request.";
         final lc = msg.toLowerCase();
 
-        if (lc.contains('already')) {
-          return PhoneAddResult(PhoneAddOutcome.alreadyAdded, msg);
-        }
         if (lc.contains('not found')) {
           return PhoneAddResult(PhoneAddOutcome.userNotFound, msg);
         }
@@ -98,26 +136,20 @@ class ContactsController extends GetxController {
 
       return const PhoneAddResult(
         PhoneAddOutcome.failed,
-        "Failed to add contact.",
+        "Failed to process request.",
       );
     }
   }
 
-  Future<void> syncFromPhonebook() async {
+  Future<void> syncFromPhonebook({bool showSnackbars = true}) async {
     try {
       isSyncingPhonebook.value = true;
 
       final granted = await FlutterContacts.requestPermission(readonly: true);
       if (!granted) {
-        Get.snackbar(
-          "Permission",
-          "Contacts permission denied",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withValues(alpha: 0.1),
-          colorText: Colors.red,
-          margin: const EdgeInsets.all(15),
-          borderRadius: 10,
-        );
+        if (showSnackbars) {
+          Get.snackbar("Permission", "Contacts permission denied");
+        }
         return;
       }
 
@@ -131,13 +163,10 @@ class ContactsController extends GetxController {
       }
 
       if (phones.isEmpty) {
-        Get.snackbar(
-          "Info",
-          "No phone numbers found in contacts",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.blue.withValues(alpha: 0.8),
-          colorText: Colors.white,
-        );
+        phonebookMatches.clear();
+        if (showSnackbars) {
+          Get.snackbar("Info", "No phone numbers found in contacts");
+        }
         return;
       }
 
@@ -152,43 +181,19 @@ class ContactsController extends GetxController {
       if (res.statusCode != 200) return;
 
       final matches = (res.data['matches'] as List?) ?? [];
-      int added = 0;
+      phonebookMatches.value = matches
+          .map(
+            (m) => PhonebookMatchModel.fromJson(Map<String, dynamic>.from(m)),
+          )
+          .toList();
 
-      for (final m in matches) {
-        final isAlready = m['isAlreadyContact'] == true;
-        if (isAlready) continue;
-
-        final user = Map<String, dynamic>.from(m['user'] ?? {});
-        final num = user['phoneNumber']?.toString() ?? '';
-        if (num.isEmpty) continue;
-
-        final result = await addByPhone(num);
-        if (result.outcome == PhoneAddOutcome.added) {
-          added++;
-        }
-      }
-
-      await fetchContacts();
-
-      if (added != 0) {
-        Get.snackbar(
-          "Sync complete",
-          "Added $added contact(s) from phonebook",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.withValues(alpha: 0.8),
-          colorText: Colors.white,
-        );
+      if (showSnackbars) {
+        Get.snackbar("Synced", "Phonebook updated");
       }
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        "Phonebook sync failed",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withValues(alpha: 0.1),
-        colorText: Colors.red,
-        margin: const EdgeInsets.all(15),
-        borderRadius: 10,
-      );
+      if (showSnackbars) {
+        Get.snackbar("Error", "Phonebook sync failed");
+      }
     } finally {
       isSyncingPhonebook.value = false;
     }
@@ -215,15 +220,54 @@ class ContactsController extends GetxController {
     }
   }
 
+  Future<bool> acceptRequest(String contactId) async {
+    try {
+      final res = await _dio.post('${ApiUrls.contactsBase}/$contactId/accept');
+      if (res.statusCode == 200) {
+        await refreshAll();
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> rejectRequest(String contactId) async {
+    try {
+      final res = await _dio.post('${ApiUrls.contactsBase}/$contactId/reject');
+      if (res.statusCode == 200) {
+        await refreshAll();
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> cancelRequest(String contactId) async {
+    try {
+      final res = await _dio.post('${ApiUrls.contactsBase}/$contactId/cancel');
+      if (res.statusCode == 200) {
+        await refreshAll();
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> removeContact(String contactId) async {
     try {
       final res = await _dio.delete('${ApiUrls.contactsBase}/$contactId');
       if (res.statusCode == 200) {
-        contacts.removeWhere((c) => c.id == contactId);
+        await refreshAll();
         return true;
       }
       return false;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }
@@ -235,15 +279,22 @@ class ContactsController extends GetxController {
         myQrPayload.value = res.data['qrPayload']?.toString();
       }
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        "Unable to load QR",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withValues(alpha: 0.1),
-        colorText: Colors.red,
-        margin: const EdgeInsets.all(15),
-        borderRadius: 10,
-      );
+      Get.snackbar("Error", "Unable to load QR");
+    }
+  }
+
+  QrAddResult _mapQrCode(String? code, String message) {
+    switch (code) {
+      case 'REQUEST_SENT':
+        return QrAddResult(QrAddOutcome.requestSent, message);
+      case 'REQUEST_ACCEPTED':
+        return QrAddResult(QrAddOutcome.requestAccepted, message);
+      case 'ALREADY_ADDED':
+        return QrAddResult(QrAddOutcome.alreadyAdded, message);
+      case 'REQUEST_PENDING':
+        return QrAddResult(QrAddOutcome.alreadyRequested, message);
+      default:
+        return QrAddResult(QrAddOutcome.failed, message);
     }
   }
 
@@ -255,27 +306,20 @@ class ContactsController extends GetxController {
       );
 
       if (res.statusCode == 200 || res.statusCode == 201) {
-        await fetchContacts();
-        final bool alreadyExists = res.data['alreadyExists'] == true;
-        final String msg =
-            res.data['message']?.toString() ??
-            (alreadyExists ? "User already in contacts." : "Contact added.");
-        return QrAddResult(
-          alreadyExists ? QrAddOutcome.alreadyAdded : QrAddOutcome.added,
-          msg,
-        );
+        await refreshAll();
+        final msg = res.data['message']?.toString() ?? "Request sent.";
+        return _mapQrCode(res.data['code']?.toString(), msg);
       }
 
-      return const QrAddResult(QrAddOutcome.failed, "Unable to add contact.");
+      return const QrAddResult(
+        QrAddOutcome.failed,
+        "Unable to process request.",
+      );
     } catch (e) {
       if (e is DioException) {
-        final String msg =
-            e.response?.data?['message']?.toString() ?? "Invalid QR";
+        final msg = e.response?.data?['message']?.toString() ?? "Invalid QR";
         final lc = msg.toLowerCase();
 
-        if (lc.contains("already")) {
-          return QrAddResult(QrAddOutcome.alreadyAdded, msg);
-        }
         if (lc.contains("not found")) {
           return QrAddResult(QrAddOutcome.userNotFound, msg);
         }
@@ -287,7 +331,10 @@ class ContactsController extends GetxController {
         return QrAddResult(QrAddOutcome.failed, msg);
       }
 
-      return const QrAddResult(QrAddOutcome.failed, "Unable to add contact.");
+      return const QrAddResult(
+        QrAddOutcome.failed,
+        "Unable to process request.",
+      );
     }
   }
 }
