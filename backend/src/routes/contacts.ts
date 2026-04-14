@@ -24,23 +24,64 @@ async function ensureMutualContact(
     }
 }
 
-const normalizePhone = (raw: string): string => {
+const digitsOnly = (raw: string): string =>
+    String(raw || "").replace(/[^\d]/g, "");
+
+const normalizeE164 = (raw: string): string => {
     let value = String(raw || "").trim();
     if (!value) return "";
 
-    value = value.replace(/[^\d+]/g, "");
     if (value.startsWith("00")) value = `+${value.slice(2)}`;
+    const hasPlus = value.startsWith("+");
+    const digits = digitsOnly(value);
+    if (digits.length < 8) return "";
 
-    if (!value.startsWith("+")) value = `+${value}`;
-    value = `+${value.replace(/[^\d]/g, "")}`;
-
-    return value.length >= 8 ? value : "";
+    return hasPlus ? `+${digits}` : "";
 };
 
-const phoneVariants = (normalized: string): string[] => {
-    if (!normalized) return [];
-    const withoutPlus = normalized.startsWith("+") ? normalized.slice(1) : normalized;
-    return Array.from(new Set([normalized, withoutPlus]));
+const phoneVariants = (normalizedE164: string): string[] => {
+    if (!normalizedE164) return [];
+    const withoutPlus = normalizedE164.startsWith("+")
+        ? normalizedE164.slice(1)
+        : normalizedE164;
+    return Array.from(new Set([normalizedE164, withoutPlus]));
+};
+
+const buildPhonebookCandidates = (
+    raw: string,
+    defaultCountryCode?: string
+): string[] => {
+    const candidates = new Set<string>();
+    const value = String(raw || "").trim();
+    if (!value) return [];
+
+    const hasExplicitCountry = value.startsWith("+") || value.startsWith("00");
+    const digits = digitsOnly(value);
+    if (digits.length < 8) return [];
+
+    if (hasExplicitCountry) {
+        candidates.add(`+${digits}`);
+        candidates.add(digits);
+    } else {
+        if (digits.length > 10) {
+            candidates.add(`+${digits}`);
+            candidates.add(digits);
+        } else {
+            candidates.add(digits);
+        }
+
+        const cc = digitsOnly(defaultCountryCode || "");
+        if (cc.length > 0) {
+            candidates.add(`+${cc}${digits}`);
+            candidates.add(`${cc}${digits}`);
+        } else if (digits.length === 10) {
+            // Safe fallback for common local format without country code.
+            candidates.add(`+91${digits}`);
+            candidates.add(`91${digits}`);
+        }
+    }
+
+    return Array.from(candidates);
 };
 
 const getUserId = (req: Request): string => (req as any).user._id.toString();
@@ -68,7 +109,7 @@ contactsRouter.post("/add-by-phone", protect, async (req: Request, res: Response
             return res.status(400).json({ success: false, message: "phoneNumber is required." });
         }
 
-        const normalized = normalizePhone(rawPhone);
+        const normalized = normalizeE164(rawPhone);
         if (!normalized) {
             return res.status(400).json({ success: false, message: "Invalid phone number." });
         }
@@ -107,6 +148,9 @@ contactsRouter.post("/match-phonebook", protect, async (req: Request, res: Respo
     try {
         const ownerId = getUserId(req);
         const phoneNumbers = req.body?.phoneNumbers;
+        const defaultCountryCodeRaw = req.body?.defaultCountryCode;
+        const defaultCountryCode =
+            typeof defaultCountryCodeRaw === "string" ? defaultCountryCodeRaw : "";
 
         if (!Array.isArray(phoneNumbers)) {
             return res.status(400).json({ success: false, message: "phoneNumbers array is required." });
@@ -115,9 +159,9 @@ contactsRouter.post("/match-phonebook", protect, async (req: Request, res: Respo
         const normalizedSet = new Set<string>();
         for (const number of phoneNumbers) {
             if (typeof number !== "string") continue;
-            const n = normalizePhone(number);
-            if (!n) continue;
-            for (const v of phoneVariants(n)) normalizedSet.add(v);
+            for (const candidate of buildPhonebookCandidates(number, defaultCountryCode)) {
+                normalizedSet.add(candidate);
+            }
         }
 
         const normalizedList = Array.from(normalizedSet);
@@ -139,6 +183,30 @@ contactsRouter.post("/match-phonebook", protect, async (req: Request, res: Respo
         }));
 
         return res.status(200).json({ success: true, matches });
+    } catch {
+        return res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+});
+
+contactsRouter.delete("/:contactId", protect, async (req: Request, res: Response) => {
+    try {
+        const ownerId = getUserId(req);
+        const { contactId } = req.params;
+
+        const existing = await Contact.findOne({ _id: contactId, owner: ownerId });
+        if (!existing) {
+            return res.status(404).json({ success: false, message: "Contact not found." });
+        }
+
+        await Contact.deleteOne({ _id: existing._id, owner: ownerId });
+
+        // Keep reciprocal relation in sync because add flow creates both sides.
+        await Contact.deleteMany({
+            owner: existing.contactUser,
+            contactUser: ownerId,
+        });
+
+        return res.status(200).json({ success: true, message: "Contact removed." });
     } catch {
         return res.status(500).json({ success: false, message: "Internal Server Error" });
     }

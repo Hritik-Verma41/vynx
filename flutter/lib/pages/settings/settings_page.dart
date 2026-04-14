@@ -110,16 +110,29 @@ class SettingsPage extends StatelessWidget {
         ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 35,
-              backgroundColor: Colors.purple.withValues(alpha: 0.2),
-              backgroundImage:
-                  (u?.profileImage != null && u!.profileImage!.isNotEmpty)
-                  ? NetworkImage(u.profileImage!)
-                  : null,
-              child: (u?.profileImage == null || u!.profileImage!.isEmpty)
-                  ? const Icon(Icons.person, size: 35, color: Colors.purple)
-                  : null,
+            GestureDetector(
+              onTap: () => Get.toNamed(
+                Routes.profileImageViewer,
+                arguments: {
+                  'title': 'Profile Picture',
+                  'type':
+                      (u?.profileImage != null && u!.profileImage!.isNotEmpty)
+                      ? 'network'
+                      : 'none',
+                  'value': u?.profileImage ?? '',
+                },
+              ),
+              child: CircleAvatar(
+                radius: 35,
+                backgroundColor: Colors.purple.withValues(alpha: 0.2),
+                backgroundImage:
+                    (u?.profileImage != null && u!.profileImage!.isNotEmpty)
+                    ? NetworkImage(u.profileImage!)
+                    : null,
+                child: (u?.profileImage == null || u!.profileImage!.isEmpty)
+                    ? const Icon(Icons.person, size: 35, color: Colors.purple)
+                    : null,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -153,6 +166,23 @@ class SettingsPage extends StatelessWidget {
                   color: Colors.purple,
                 ),
               ),
+            IconButton(
+              onPressed: () => Get.toNamed(
+                Routes.profileImageViewer,
+                arguments: {
+                  'title': 'Profile Picture',
+                  'type':
+                      (u?.profileImage != null && u!.profileImage!.isNotEmpty)
+                      ? 'network'
+                      : 'none',
+                  'value': u?.profileImage ?? '',
+                },
+              ),
+              icon: Icon(
+                Icons.visibility_outlined,
+                color: isDark ? Colors.purple[200] : Colors.purple[700],
+              ),
+            ),
             IconButton(
               onPressed: () => Get.toNamed(Routes.myQr),
               icon: Icon(

@@ -1,11 +1,13 @@
 import 'package:get/get.dart';
 import 'package:vynx/middlewares/auth_middleware.dart';
 import 'package:vynx/pages/chats/chats_controller.dart';
+import 'package:vynx/pages/contacts/contact_info_page.dart';
 import 'package:vynx/pages/contacts/contacts_controller.dart';
 import 'package:vynx/pages/contacts/contacts_page.dart';
 import 'package:vynx/pages/login/login_page.dart';
 import 'package:vynx/pages/qr_page/my_qr_page.dart';
 import 'package:vynx/pages/qr_page/scan_qr_page.dart';
+import 'package:vynx/pages/profile_image_viewer/profile_image_viewer_page.dart';
 import 'package:vynx/pages/settings/account_info/account_info_controller.dart';
 import 'package:vynx/pages/settings/account_info/account_info_page.dart';
 import 'package:vynx/pages/settings/appearance/appearance_page.dart';
@@ -53,6 +55,16 @@ class AppPages {
           fenix: true,
         );
       }),
+    ),
+    GetPage(
+      name: Routes.contactInfo,
+      page: () => const ContactInfoPage(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: Routes.profileImageViewer,
+      page: () => const ProfileImageViewerPage(),
+      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: Routes.myQr,

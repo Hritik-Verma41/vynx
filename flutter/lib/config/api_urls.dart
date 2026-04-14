@@ -21,6 +21,7 @@ class ApiUrls {
   static const contactsMatchPhonebook = '/contacts/match-phonebook';
   static const contactsMyQr = '/contacts/me/qr';
   static const contactsAddByQr = '/contacts/add-by-qr';
+  static const contactsBase = '/contacts';
 
   static const conversations = '/conversations';
 }
