@@ -66,7 +66,31 @@ class ContactsController extends GetxController {
       contacts.where((c) => c.isAccepted).toList();
 
   List<PhonebookMatchModel> get addableFromPhonebook =>
-      phonebookMatches.where((m) => m.relationStatus != 'accepted').toList();
+      () {
+        final requestUserIds = incomingRequests
+            .map((c) => c.contactUser.id)
+            .where((id) => id.isNotEmpty)
+            .toSet();
+        final addedUserIds = addedContacts
+            .map((c) => c.contactUser.id)
+            .where((id) => id.isNotEmpty)
+            .toSet();
+        final seen = <String>{};
+
+        return phonebookMatches.where((m) {
+          // Keep incoming requests only under "Requests" section.
+          if (m.relationStatus == 'pending_incoming') return false;
+          // Added contacts belong only under "Added Contacts".
+          if (m.relationStatus == 'accepted') return false;
+          // Defensive dedupe: do not repeat users shown in top sections.
+          if (requestUserIds.contains(m.user.id) || addedUserIds.contains(m.user.id)) {
+            return false;
+          }
+          // Defensive dedupe: keep one entry per user in this section.
+          if (m.user.id.isNotEmpty && !seen.add(m.user.id)) return false;
+          return true; // none, pending_outgoing, rejected
+        }).toList();
+      }();
 
   Future<void> fetchContacts() async {
     try {

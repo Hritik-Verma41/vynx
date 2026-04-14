@@ -36,9 +36,9 @@ class ContactsPage extends StatelessWidget {
           ),
           Obx(
             () => IconButton(
-              onPressed: ctrl.isSyncingPhonebook.value
+              onPressed: (ctrl.isSyncingPhonebook.value || ctrl.isLoading.value)
                   ? null
-                  : () => ctrl.syncFromPhonebook(showSnackbars: true),
+                  : ctrl.refreshAll,
               icon: ctrl.isSyncingPhonebook.value
                   ? const SizedBox(
                       width: 20,
