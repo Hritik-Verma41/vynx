@@ -14,6 +14,7 @@ export interface IUser {
     facebookUid?: string;
     providers: ('local' | 'google' | 'facebook' | 'phone')[];
     refreshToken?: string | null;
+    fcmTokens?: string[];
 }
 
 const userSchema = new Schema<IUser>({
@@ -38,7 +39,8 @@ const userSchema = new Schema<IUser>({
         enum: ['local', 'google', 'facebook', 'phone'],
         required: true
     }],
-    refreshToken: { type: String, default: null }
+    refreshToken: { type: String, default: null },
+    fcmTokens: { type: [String], default: [] }
 }, { timestamps: true });
 
 export const User = model<IUser>('User', userSchema);

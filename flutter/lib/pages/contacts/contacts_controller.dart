@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 
 import 'package:dio/dio.dart';
@@ -6,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:vynx/config/api_urls.dart';
 import 'package:vynx/models/contact_model.dart';
 import 'package:vynx/services/api_service.dart';
+import 'package:vynx/services/storage_service.dart';
 
 enum QrAddOutcome {
   requestSent,
@@ -41,22 +43,31 @@ class PhoneAddResult {
 
 class ContactsController extends GetxController {
   final Dio _dio = Get.find<ApiService>().dio;
+  final StorageService _storage = Get.find<StorageService>();
 
   final contacts = <ContactModel>[].obs;
   final phonebookMatches = <PhonebookMatchModel>[].obs;
   final isLoading = false.obs;
   final isSyncingPhonebook = false.obs;
   final myQrPayload = RxnString();
+  Timer? _autoRefreshTimer;
+  bool _isRefreshing = false;
 
   @override
   void onInit() {
     super.onInit();
+    _loadCachedContacts();
+    _loadCachedPhonebookMatches();
     refreshAll();
+    _startAutoRefresh();
   }
 
   Future<void> refreshAll() async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
     await fetchContacts();
     await syncFromPhonebook(showSnackbars: false);
+    _isRefreshing = false;
   }
 
   List<ContactModel> get incomingRequests =>
@@ -66,7 +77,31 @@ class ContactsController extends GetxController {
       contacts.where((c) => c.isAccepted).toList();
 
   List<PhonebookMatchModel> get addableFromPhonebook =>
-      phonebookMatches.where((m) => m.relationStatus != 'accepted').toList();
+      () {
+        final requestUserIds = incomingRequests
+            .map((c) => c.contactUser.id)
+            .where((id) => id.isNotEmpty)
+            .toSet();
+        final addedUserIds = addedContacts
+            .map((c) => c.contactUser.id)
+            .where((id) => id.isNotEmpty)
+            .toSet();
+        final seen = <String>{};
+
+        return phonebookMatches.where((m) {
+          // Keep incoming requests only under "Requests" section.
+          if (m.relationStatus == 'pending_incoming') return false;
+          // Added contacts belong only under "Added Contacts".
+          if (m.relationStatus == 'accepted') return false;
+          // Defensive dedupe: do not repeat users shown in top sections.
+          if (requestUserIds.contains(m.user.id) || addedUserIds.contains(m.user.id)) {
+            return false;
+          }
+          // Defensive dedupe: keep one entry per user in this section.
+          if (m.user.id.isNotEmpty && !seen.add(m.user.id)) return false;
+          return true; // none, pending_outgoing, rejected
+        }).toList();
+      }();
 
   Future<void> fetchContacts() async {
     try {
@@ -77,6 +112,25 @@ class ContactsController extends GetxController {
         contacts.value = list
             .map((e) => ContactModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
+        _storage.saveContactsCache(
+          contacts
+              .map((c) => {
+                    '_id': c.id,
+                    'source': c.source,
+                    'isBlocked': c.isBlocked,
+                    'relationStatus': c.relationStatus,
+                    'alias': c.alias,
+                    'contactUser': {
+                      '_id': c.contactUser.id,
+                      'firstName': c.contactUser.firstName,
+                      'lastName': c.contactUser.lastName,
+                      'phoneNumber': c.contactUser.phoneNumber,
+                      'profileImage': c.contactUser.profileImage,
+                      'status': c.contactUser.status,
+                    },
+                  })
+              .toList(),
+        );
       }
     } catch (e) {
       log("fetchContacts error: $e");
@@ -164,6 +218,7 @@ class ContactsController extends GetxController {
 
       if (phones.isEmpty) {
         phonebookMatches.clear();
+        _storage.savePhonebookMatchesCache(const []);
         if (showSnackbars) {
           Get.snackbar("Info", "No phone numbers found in contacts");
         }
@@ -186,6 +241,22 @@ class ContactsController extends GetxController {
             (m) => PhonebookMatchModel.fromJson(Map<String, dynamic>.from(m)),
           )
           .toList();
+      _storage.savePhonebookMatchesCache(
+        phonebookMatches
+            .map((m) => {
+                  'user': {
+                    '_id': m.user.id,
+                    'firstName': m.user.firstName,
+                    'lastName': m.user.lastName,
+                    'phoneNumber': m.user.phoneNumber,
+                    'profileImage': m.user.profileImage,
+                    'status': m.user.status,
+                  },
+                  'relationStatus': m.relationStatus,
+                  'contactId': m.contactId,
+                })
+            .toList(),
+      );
 
       if (showSnackbars) {
         Get.snackbar("Synced", "Phonebook updated");
@@ -197,6 +268,25 @@ class ContactsController extends GetxController {
     } finally {
       isSyncingPhonebook.value = false;
     }
+  }
+
+  void _loadCachedContacts() {
+    final cached = _storage.getContactsCache();
+    if (cached.isEmpty) return;
+    contacts.value = cached.map(ContactModel.fromJson).toList();
+  }
+
+  void _loadCachedPhonebookMatches() {
+    final cached = _storage.getPhonebookMatchesCache();
+    if (cached.isEmpty) return;
+    phonebookMatches.value = cached.map(PhonebookMatchModel.fromJson).toList();
+  }
+
+  void _startAutoRefresh() {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      refreshAll();
+    });
   }
 
   String _defaultDialCode() {
@@ -336,5 +426,11 @@ class ContactsController extends GetxController {
         "Unable to process request.",
       );
     }
+  }
+
+  @override
+  void onClose() {
+    _autoRefreshTimer?.cancel();
+    super.onClose();
   }
 }

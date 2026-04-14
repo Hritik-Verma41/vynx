@@ -28,6 +28,10 @@ class StorageService extends GetxService {
   static const String privacySettingsKey = 'cached_privacy_settings';
   static const String notificationSettingsKey = 'cached_notification_settings';
   static const String dataUsageSettingsKey = 'cached_data_usage_settings';
+  static const String cachedContactsKey = 'cached_contacts';
+  static const String cachedPhonebookMatchesKey = 'cached_phonebook_matches';
+  static const String deviceFcmTokenKey = 'device_fcm_token';
+  static const String registeredDeviceFcmTokenKey = 'registered_device_fcm_token';
   static const String notifCallsKey = 'notif_calls';
   static const String notifEnabledKey = 'notif_enabled';
   static const String notifMessagePreviewKey = 'notif_message_preview';
@@ -86,6 +90,55 @@ class StorageService extends GetxService {
       return DataUsageSettingsModel.fromJson(Map<String, dynamic>.from(data));
     }
     return null;
+  }
+
+  void saveContactsCache(List<Map<String, dynamic>> contacts) {
+    _cache.write(cachedContactsKey, contacts);
+  }
+
+  List<Map<String, dynamic>> getContactsCache() {
+    final data = _cache.read(cachedContactsKey);
+    if (data is List) {
+      return data
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+    }
+    return <Map<String, dynamic>>[];
+  }
+
+  void savePhonebookMatchesCache(List<Map<String, dynamic>> matches) {
+    _cache.write(cachedPhonebookMatchesKey, matches);
+  }
+
+  List<Map<String, dynamic>> getPhonebookMatchesCache() {
+    final data = _cache.read(cachedPhonebookMatchesKey);
+    if (data is List) {
+      return data
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+    }
+    return <Map<String, dynamic>>[];
+  }
+
+  void saveDeviceFcmToken(String token) {
+    _cache.write(deviceFcmTokenKey, token);
+  }
+
+  String? getDeviceFcmToken() {
+    return _cache.read<String>(deviceFcmTokenKey);
+  }
+
+  void clearDeviceFcmToken() {
+    _cache.remove(deviceFcmTokenKey);
+    _cache.remove(registeredDeviceFcmTokenKey);
+  }
+
+  void saveRegisteredDeviceFcmToken(String token) {
+    _cache.write(registeredDeviceFcmTokenKey, token);
+  }
+
+  String? getRegisteredDeviceFcmToken() {
+    return _cache.read<String>(registeredDeviceFcmTokenKey);
   }
 
   Future<void> writeSecure(String key, String value) async =>

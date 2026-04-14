@@ -6,6 +6,7 @@ import 'package:vynx/models/user_model.dart';
 import 'package:vynx/routes/app_routes.dart';
 import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/auth_timer_service.dart';
+import 'package:vynx/services/push_notification_service.dart';
 import 'package:vynx/services/storage_service.dart';
 import 'package:vynx/services/token_service.dart';
 
@@ -57,6 +58,9 @@ class UserController extends GetxController {
 
   Future<void> logout() async {
     Get.find<AuthTimerService>().stopTimer();
+    if (Get.isRegistered<PushNotificationService>()) {
+      await Get.find<PushNotificationService>().unregisterDeviceTokenIfPossible();
+    }
     await Get.find<TokenService>().clearTokens();
 
     Get.delete<UserController>(force: true);

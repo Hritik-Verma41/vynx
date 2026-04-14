@@ -6,6 +6,7 @@ class ApiUrls {
 
   static const linkProvider = '/users/link-provider';
   static const updateProfile = '/users/update-profile';
+  static const usersDeviceToken = '/users/device-token';
 
   static const notificationSettings = '/notification-settings';
   static const notificationSettingsUpdate = '/notification-settings/update';

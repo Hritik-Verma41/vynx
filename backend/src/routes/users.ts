@@ -144,4 +144,46 @@ userRouter.patch('/update-profile', protect, async (req: Request, res: Response)
     }
 })
 
+userRouter.post('/device-token', protect, async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user._id;
+        const tokenRaw = req.body?.token;
+        if (typeof tokenRaw !== 'string' || tokenRaw.trim().length === 0) {
+            return res.status(400).json({ success: false, message: "token is required." });
+        }
+
+        const token = tokenRaw.trim();
+        await User.findByIdAndUpdate(
+            userId,
+            { $addToSet: { fcmTokens: token } },
+            { new: true, runValidators: false }
+        );
+
+        return res.status(200).json({ success: true, message: "Device token saved." });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+});
+
+userRouter.delete('/device-token', protect, async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user._id;
+        const tokenRaw = req.body?.token;
+        if (typeof tokenRaw !== 'string' || tokenRaw.trim().length === 0) {
+            return res.status(400).json({ success: false, message: "token is required." });
+        }
+
+        const token = tokenRaw.trim();
+        await User.findByIdAndUpdate(
+            userId,
+            { $pull: { fcmTokens: token } },
+            { new: true }
+        );
+
+        return res.status(200).json({ success: true, message: "Device token removed." });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+});
+
 export default userRouter;

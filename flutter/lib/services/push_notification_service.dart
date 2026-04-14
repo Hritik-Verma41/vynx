@@ -1,0 +1,135 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:vynx/config/api_urls.dart';
+import 'package:vynx/pages/contacts/contacts_controller.dart';
+import 'package:vynx/services/api_service.dart';
+import 'package:vynx/services/storage_service.dart';
+import 'package:vynx/services/token_service.dart';
+
+class PushNotificationService extends GetxService {
+  final Dio _dio = Get.find<ApiService>().dio;
+  final StorageService _storage = Get.find<StorageService>();
+  final TokenService _tokenService = Get.find<TokenService>();
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+
+  StreamSubscription<RemoteMessage>? _onMessageSub;
+  StreamSubscription<RemoteMessage>? _onMessageOpenedSub;
+  StreamSubscription<String>? _onTokenRefreshSub;
+
+  bool _isInitialized = false;
+
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    _isInitialized = true;
+
+    await _messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+      provisional: false,
+    );
+
+    await _messaging.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    _onMessageSub = FirebaseMessaging.onMessage.listen((message) {
+      _handleIncomingMessage(message, showPopup: true);
+    });
+
+    _onMessageOpenedSub = FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      _handleIncomingMessage(message, showPopup: false);
+    });
+
+    _onTokenRefreshSub = _messaging.onTokenRefresh.listen((token) {
+      _storage.saveDeviceFcmToken(token);
+      registerDeviceTokenIfPossible(force: true, tokenOverride: token);
+    });
+
+    final initialMessage = await _messaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleIncomingMessage(initialMessage, showPopup: false);
+    }
+
+    final token = await _messaging.getToken();
+    if (token != null && token.isNotEmpty) {
+      _storage.saveDeviceFcmToken(token);
+      await registerDeviceTokenIfPossible(tokenOverride: token);
+    }
+  }
+
+  Future<void> registerDeviceTokenIfPossible({
+    bool force = false,
+    String? tokenOverride,
+  }) async {
+    final refreshToken = await _tokenService.getRefreshToken();
+    if (refreshToken == null) return;
+
+    final token =
+        tokenOverride ?? _storage.getDeviceFcmToken() ?? await _messaging.getToken();
+    if (token == null || token.trim().isEmpty) return;
+
+    final alreadyRegistered = _storage.getRegisteredDeviceFcmToken();
+    if (!force && alreadyRegistered == token) {
+      return;
+    }
+
+    try {
+      await _dio.post(ApiUrls.usersDeviceToken, data: {'token': token});
+      _storage.saveDeviceFcmToken(token);
+      _storage.saveRegisteredDeviceFcmToken(token);
+    } catch (_) {}
+  }
+
+  Future<void> unregisterDeviceTokenIfPossible() async {
+    final token = _storage.getDeviceFcmToken();
+    if (token == null || token.isEmpty) return;
+
+    try {
+      await _dio.delete(ApiUrls.usersDeviceToken, data: {'token': token});
+      _storage.clearDeviceFcmToken();
+    } catch (_) {
+      // Ignore on logout path
+    }
+  }
+
+  void _handleIncomingMessage(
+    RemoteMessage message, {
+    required bool showPopup,
+  }) {
+    final type = message.data['type']?.toString() ?? '';
+    if (type.startsWith('contact_request')) {
+      if (Get.isRegistered<ContactsController>()) {
+        Get.find<ContactsController>().refreshAll();
+      }
+    }
+
+    if (!showPopup) return;
+    final title = message.notification?.title ?? "Notification";
+    final body = message.notification?.body ?? "You have a new update.";
+    Get.snackbar(
+      title,
+      body,
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.black.withValues(alpha: 0.75),
+      colorText: Colors.white,
+      margin: const EdgeInsets.all(12),
+      borderRadius: 10,
+      duration: const Duration(seconds: 3),
+    );
+  }
+
+  @override
+  void onClose() {
+    _onMessageSub?.cancel();
+    _onMessageOpenedSub?.cancel();
+    _onTokenRefreshSub?.cancel();
+    super.onClose();
+  }
+}
