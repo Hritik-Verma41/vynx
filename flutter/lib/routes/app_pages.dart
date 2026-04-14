@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:vynx/middlewares/auth_middleware.dart';
 import 'package:vynx/pages/chats/chats_controller.dart';
+import 'package:vynx/pages/contacts/contact_info_page.dart';
 import 'package:vynx/pages/contacts/contacts_controller.dart';
 import 'package:vynx/pages/contacts/contacts_page.dart';
 import 'package:vynx/pages/login/login_page.dart';
@@ -53,6 +54,11 @@ class AppPages {
           fenix: true,
         );
       }),
+    ),
+    GetPage(
+      name: Routes.contactInfo,
+      page: () => const ContactInfoPage(),
+      middlewares: [AuthMiddleware()],
     ),
     GetPage(
       name: Routes.myQr,

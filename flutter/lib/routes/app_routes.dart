@@ -12,6 +12,7 @@ abstract class Routes {
   static const vynxhub = '/vynx-hub';
 
   static const contacts = '/contacts';
+  static const contactInfo = '/contacts/info';
   static const myQr = '/contacts/my-qr';
   static const scanQr = '/contacts/scan-qr';
 }

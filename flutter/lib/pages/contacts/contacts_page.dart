@@ -109,7 +109,8 @@ class ContactsPage extends StatelessWidget {
                       ),
                     ),
                     child: ListTile(
-                      onTap: () => Get.back(),
+                      onTap: () =>
+                          Get.toNamed(Routes.contactInfo, arguments: c),
                       leading: CircleAvatar(
                         radius: 24,
                         backgroundColor: Colors.purple.withValues(alpha: 0.18),
@@ -125,21 +126,54 @@ class ContactsPage extends StatelessWidget {
                       ),
                       title: Text(
                         u.fullName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: isDark ? Colors.white : Colors.black,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       subtitle: Text(
-                        u.phoneNumber ?? u.status,
+                        u.status.isEmpty ? "Available" : u.status,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: isDark ? Colors.white60 : Colors.black54,
                           fontSize: 12,
                         ),
                       ),
-                      trailing: Icon(
-                        Icons.chevron_right,
-                        color: isDark ? Colors.white38 : Colors.black38,
+                      trailing: SizedBox(
+                        width: 72,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            _actionIcon(
+                              icon: Icons.chat_bubble_outline_rounded,
+                              color: isDark
+                                  ? Colors.purple[200]!
+                                  : Colors.purple[700]!,
+                              onTap: () {
+                                Get.snackbar(
+                                  "Next",
+                                  "Open chat with ${u.fullName}",
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 4),
+                            _actionIcon(
+                              icon: Icons.call_outlined,
+                              color: isDark
+                                  ? Colors.purple[200]!
+                                  : Colors.purple[700]!,
+                              onTap: () {
+                                Get.snackbar(
+                                  "Next",
+                                  "Start call with ${u.fullName}",
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -334,6 +368,22 @@ class ContactsPage extends StatelessWidget {
         },
       ),
       barrierDismissible: false,
+    );
+  }
+
+  Widget _actionIcon({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: SizedBox(
+        width: 34,
+        height: 34,
+        child: Icon(icon, size: 20, color: color),
+      ),
     );
   }
 }
