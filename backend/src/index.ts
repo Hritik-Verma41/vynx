@@ -1,13 +1,17 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express, { Application, Request, Response } from 'express';
+import http from 'http';
 
 import routesRouter from './routes';
 import connectDB from './config/mongodb';
+import { initSocketServer } from './sockets/socketServer';
+import { startMessageCleanupJob } from './jobs/messageCleanupJob';
 
 dotenv.config();
 
 const app: Application = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 8000;
 
 connectDB();
@@ -24,6 +28,9 @@ app.get('/', (req: Request, res: Response) => {
     res.json({ message: "Hello from Vynx backend" });
 });
 
-app.listen(PORT, () => {
+initSocketServer(server);
+startMessageCleanupJob();
+
+server.listen(PORT, () => {
     console.log(`⚡️[server]: Vynx server started running at http://localhost:${PORT}`)
 });
