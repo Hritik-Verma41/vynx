@@ -7,6 +7,7 @@ import 'package:vynx/routes/app_routes.dart';
 import 'package:vynx/services/api_service.dart';
 import 'package:vynx/services/auth_service.dart';
 import 'package:vynx/services/auth_timer_service.dart';
+import 'package:vynx/services/push_notification_service.dart';
 import 'package:vynx/services/token_service.dart';
 
 class LoginCtrl extends GetxController {
@@ -57,6 +58,9 @@ class LoginCtrl extends GetxController {
         if (access != null && refresh != null) {
           await tokenServive.saveTokens(access, refresh);
           Get.find<AuthTimerService>().startTokenTimer();
+          await Get.find<PushNotificationService>().registerDeviceTokenIfPossible(
+            force: true,
+          );
           await userCtrl.fetchProfile();
           Get.offAllNamed(Routes.vynxhub);
         }

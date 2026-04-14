@@ -4,6 +4,11 @@ import jwt from "jsonwebtoken";
 import { protect } from "../middlewares/authMiddleware";
 import { Contact } from "../models/Contact";
 import { User } from "../models/User";
+import {
+    sendContactAcceptedPush,
+    sendContactRejectedPush,
+    sendContactRequestPush,
+} from "../services/pushNotificationService";
 
 const contactsRouter: Router = Router();
 const QR_SECRET = process.env.CONTACT_QR_SECRET || process.env.JWT_ACCESS_SECRET || "vynx-contact-secret";
@@ -140,12 +145,14 @@ contactsRouter.get("/", protect, async (req: Request, res: Response) => {
 async function createOrTransitionRequest(
     ownerId: string,
     targetId: string,
-    source: "phone" | "qr"
+    source: "phone" | "qr",
+    ownerName: string
 ) {
     const existing = await Contact.findOne({ owner: ownerId, contactUser: targetId });
 
     if (!existing) {
         await setPendingPair(ownerId, targetId, source);
+        await sendContactRequestPush(targetId, ownerName);
         return { code: "REQUEST_SENT", message: "Contact request sent." };
     }
 
@@ -159,10 +166,12 @@ async function createOrTransitionRequest(
 
     if (existing.relationStatus === "pending_incoming") {
         await setAcceptedPair(ownerId, targetId);
+        await sendContactAcceptedPush(targetId, ownerName);
         return { code: "REQUEST_ACCEPTED", message: "Request accepted. Contact added." };
     }
 
     await setPendingPair(ownerId, targetId, source);
+    await sendContactRequestPush(targetId, ownerName);
     return { code: "REQUEST_SENT", message: "Contact request sent." };
 }
 
@@ -170,6 +179,10 @@ contactsRouter.post("/add-by-phone", protect, async (req: Request, res: Response
     try {
         const ownerId = getUserId(req);
         const rawPhone = req.body?.phoneNumber;
+        const owner = await User.findById(ownerId).select("firstName lastName");
+        const ownerName = owner
+            ? `${owner.firstName} ${owner.lastName || ""}`.trim()
+            : "Someone";
 
         if (typeof rawPhone !== "string" || rawPhone.trim().length === 0) {
             return res.status(400).json({ success: false, message: "phoneNumber is required." });
@@ -195,7 +208,8 @@ contactsRouter.post("/add-by-phone", protect, async (req: Request, res: Response
         const result = await createOrTransitionRequest(
             ownerId,
             contactUser._id.toString(),
-            "phone"
+            "phone",
+            ownerName
         );
 
         const ownerContact = await Contact.findOne({
@@ -278,6 +292,10 @@ contactsRouter.post("/:contactId/accept", protect, async (req: Request, res: Res
     try {
         const ownerId = getUserId(req);
         const { contactId } = req.params;
+        const owner = await User.findById(ownerId).select("firstName lastName");
+        const ownerName = owner
+            ? `${owner.firstName} ${owner.lastName || ""}`.trim()
+            : "Someone";
 
         const incoming = await Contact.findOne({
             _id: contactId,
@@ -290,6 +308,7 @@ contactsRouter.post("/:contactId/accept", protect, async (req: Request, res: Res
         }
 
         await setAcceptedPair(ownerId, incoming.contactUser.toString());
+        await sendContactAcceptedPush(incoming.contactUser.toString(), ownerName);
 
         return res.status(200).json({
             success: true,
@@ -305,6 +324,10 @@ contactsRouter.post("/:contactId/reject", protect, async (req: Request, res: Res
     try {
         const ownerId = getUserId(req);
         const { contactId } = req.params;
+        const owner = await User.findById(ownerId).select("firstName lastName");
+        const ownerName = owner
+            ? `${owner.firstName} ${owner.lastName || ""}`.trim()
+            : "Someone";
 
         const incoming = await Contact.findOne({
             _id: contactId,
@@ -327,6 +350,7 @@ contactsRouter.post("/:contactId/reject", protect, async (req: Request, res: Res
             { $set: { relationStatus: "rejected", requestedBy: null } },
             { new: true }
         );
+        await sendContactRejectedPush(incoming.contactUser.toString(), ownerName);
 
         return res.status(200).json({
             success: true,
@@ -416,6 +440,10 @@ contactsRouter.post("/add-by-qr", protect, async (req: Request, res: Response) =
     try {
         const ownerId = getUserId(req);
         const tokenRaw = req.body?.token;
+        const owner = await User.findById(ownerId).select("firstName lastName");
+        const ownerName = owner
+            ? `${owner.firstName} ${owner.lastName || ""}`.trim()
+            : "Someone";
 
         if (typeof tokenRaw !== "string" || tokenRaw.trim().length === 0) {
             return res.status(400).json({ success: false, message: "token is required." });
@@ -438,7 +466,8 @@ contactsRouter.post("/add-by-qr", protect, async (req: Request, res: Response) =
         const result = await createOrTransitionRequest(
             ownerId,
             targetUser._id.toString(),
-            "qr"
+            "qr",
+            ownerName
         );
 
         const ownerContact = await Contact.findOne({
