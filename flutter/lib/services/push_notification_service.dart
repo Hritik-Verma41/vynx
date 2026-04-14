@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -19,6 +21,8 @@ class PushNotificationService extends GetxService {
   StreamSubscription<RemoteMessage>? _onMessageSub;
   StreamSubscription<RemoteMessage>? _onMessageOpenedSub;
   StreamSubscription<String>? _onTokenRefreshSub;
+  Timer? _registerRetryTimer;
+  int _registerRetryAttempts = 0;
 
   bool _isInitialized = false;
 
@@ -43,7 +47,9 @@ class PushNotificationService extends GetxService {
       _handleIncomingMessage(message, showPopup: true);
     });
 
-    _onMessageOpenedSub = FirebaseMessaging.onMessageOpenedApp.listen((message) {
+    _onMessageOpenedSub = FirebaseMessaging.onMessageOpenedApp.listen((
+      message,
+    ) {
       _handleIncomingMessage(message, showPopup: false);
     });
 
@@ -57,11 +63,21 @@ class PushNotificationService extends GetxService {
       _handleIncomingMessage(initialMessage, showPopup: false);
     }
 
-    final token = await _messaging.getToken();
-    if (token != null && token.isNotEmpty) {
-      _storage.saveDeviceFcmToken(token);
-      await registerDeviceTokenIfPossible(tokenOverride: token);
+    if (Platform.isIOS || Platform.isMacOS) {
+      await _waitForApnsToken();
     }
+
+    try {
+      final token = await _messaging.getToken();
+      if (token != null && token.isNotEmpty) {
+        _storage.saveDeviceFcmToken(token);
+        await registerDeviceTokenIfPossible(tokenOverride: token);
+      }
+    } on FirebaseException catch (e) {
+      if (e.code != 'apns-token-not-set') rethrow;
+    }
+
+    _ensureTokenRegisteredEventually();
   }
 
   Future<void> registerDeviceTokenIfPossible({
@@ -69,11 +85,40 @@ class PushNotificationService extends GetxService {
     String? tokenOverride,
   }) async {
     final refreshToken = await _tokenService.getRefreshToken();
-    if (refreshToken == null) return;
+    if (refreshToken == null) {
+      _scheduleRegisterRetry();
+      return;
+    }
 
-    final token =
-        tokenOverride ?? _storage.getDeviceFcmToken() ?? await _messaging.getToken();
-    if (token == null || token.trim().isEmpty) return;
+    if ((Platform.isIOS || Platform.isMacOS) && tokenOverride == null) {
+      final apns = await _messaging.getAPNSToken();
+      if (apns == null || apns.isEmpty) {
+        _scheduleRegisterRetry();
+        return;
+      }
+    }
+
+    String? token = tokenOverride ?? _storage.getDeviceFcmToken();
+    if (token == null || token.trim().isEmpty) {
+      try {
+        token = await _messaging.getToken();
+      } on FirebaseException catch (e) {
+        if (e.code == 'apns-token-not-set') {
+          _scheduleRegisterRetry();
+          return;
+        }
+        _scheduleRegisterRetry();
+        return;
+      } catch (_) {
+        _scheduleRegisterRetry();
+        return;
+      }
+    }
+
+    if (token == null || token.trim().isEmpty) {
+      _scheduleRegisterRetry();
+      return;
+    }
 
     final alreadyRegistered = _storage.getRegisteredDeviceFcmToken();
     if (!force && alreadyRegistered == token) {
@@ -84,7 +129,44 @@ class PushNotificationService extends GetxService {
       await _dio.post(ApiUrls.usersDeviceToken, data: {'token': token});
       _storage.saveDeviceFcmToken(token);
       _storage.saveRegisteredDeviceFcmToken(token);
-    } catch (_) {}
+      debugPrint('FCM token registered on backend');
+      _registerRetryAttempts = 0;
+      _registerRetryTimer?.cancel();
+      _registerRetryTimer = null;
+    } catch (_) {
+      debugPrint('FCM token register call failed, scheduling retry');
+      _scheduleRegisterRetry();
+    }
+  }
+
+  Future<void> _waitForApnsToken() async {
+    for (int i = 0; i < 8; i++) {
+      final apnsToken = await _messaging.getAPNSToken();
+      if (apnsToken != null && apnsToken.isNotEmpty) return;
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
+  }
+
+  void _ensureTokenRegisteredEventually() {
+    Future<void>(() async {
+      for (int i = 0; i < 8; i++) {
+        await registerDeviceTokenIfPossible(force: i > 0);
+        final registered = _storage.getRegisteredDeviceFcmToken();
+        if (registered != null && registered.isNotEmpty) return;
+        await Future<void>.delayed(const Duration(seconds: 5));
+      }
+    });
+  }
+
+  void _scheduleRegisterRetry() {
+    if (_registerRetryAttempts >= 12) return;
+    if (_registerRetryTimer != null) return;
+
+    _registerRetryAttempts += 1;
+    _registerRetryTimer = Timer(const Duration(seconds: 5), () async {
+      _registerRetryTimer = null;
+      await registerDeviceTokenIfPossible(force: true);
+    });
   }
 
   Future<void> unregisterDeviceTokenIfPossible() async {
@@ -130,6 +212,7 @@ class PushNotificationService extends GetxService {
     _onMessageSub?.cancel();
     _onMessageOpenedSub?.cancel();
     _onTokenRefreshSub?.cancel();
+    _registerRetryTimer?.cancel();
     super.onClose();
   }
 }

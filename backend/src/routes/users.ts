@@ -158,9 +158,11 @@ userRouter.post('/device-token', protect, async (req: Request, res: Response) =>
             { $addToSet: { fcmTokens: token } },
             { new: true, runValidators: false }
         );
+        console.log(`[push] device token saved for user=${userId}`);
 
         return res.status(200).json({ success: true, message: "Device token saved." });
     } catch (error) {
+        console.error("[push] failed to save device token", error);
         return res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 });

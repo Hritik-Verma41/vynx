@@ -52,6 +52,7 @@ class ContactsController extends GetxController {
   final myQrPayload = RxnString();
   Timer? _autoRefreshTimer;
   bool _isRefreshing = false;
+  bool _refreshQueued = false;
 
   @override
   void onInit() {
@@ -63,11 +64,21 @@ class ContactsController extends GetxController {
   }
 
   Future<void> refreshAll() async {
-    if (_isRefreshing) return;
+    if (_isRefreshing) {
+      _refreshQueued = true;
+      return;
+    }
     _isRefreshing = true;
-    await fetchContacts();
-    await syncFromPhonebook(showSnackbars: false);
-    _isRefreshing = false;
+    try {
+      await fetchContacts();
+      await syncFromPhonebook(showSnackbars: false);
+    } finally {
+      _isRefreshing = false;
+      if (_refreshQueued) {
+        _refreshQueued = false;
+        refreshAll();
+      }
+    }
   }
 
   List<ContactModel> get incomingRequests =>
@@ -75,6 +86,9 @@ class ContactsController extends GetxController {
 
   List<ContactModel> get addedContacts =>
       contacts.where((c) => c.isAccepted).toList();
+
+  List<ContactModel> get outgoingRequests =>
+      contacts.where((c) => c.isOutgoingPending).toList();
 
   List<PhonebookMatchModel> get addableFromPhonebook =>
       () {
@@ -86,6 +100,10 @@ class ContactsController extends GetxController {
             .map((c) => c.contactUser.id)
             .where((id) => id.isNotEmpty)
             .toSet();
+        final outgoingUserIds = outgoingRequests
+            .map((c) => c.contactUser.id)
+            .where((id) => id.isNotEmpty)
+            .toSet();
         final seen = <String>{};
 
         return phonebookMatches.where((m) {
@@ -94,7 +112,9 @@ class ContactsController extends GetxController {
           // Added contacts belong only under "Added Contacts".
           if (m.relationStatus == 'accepted') return false;
           // Defensive dedupe: do not repeat users shown in top sections.
-          if (requestUserIds.contains(m.user.id) || addedUserIds.contains(m.user.id)) {
+          if (requestUserIds.contains(m.user.id) ||
+              addedUserIds.contains(m.user.id) ||
+              outgoingUserIds.contains(m.user.id)) {
             return false;
           }
           // Defensive dedupe: keep one entry per user in this section.

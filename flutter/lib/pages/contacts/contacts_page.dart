@@ -76,10 +76,14 @@ class ContactsPage extends StatelessWidget {
             }
 
             final requests = ctrl.incomingRequests;
+            final sentRequests = ctrl.outgoingRequests;
             final added = ctrl.addedContacts;
             final options = ctrl.addableFromPhonebook;
 
-            if (requests.isEmpty && added.isEmpty && options.isEmpty) {
+            if (requests.isEmpty &&
+                sentRequests.isEmpty &&
+                added.isEmpty &&
+                options.isEmpty) {
               return Center(
                 child: Text(
                   "No contacts yet.\nUse +, Scan QR, or Sync to discover people.",
@@ -100,6 +104,12 @@ class ContactsPage extends StatelessWidget {
                     _sectionHeader("Requests", isDark),
                     const SizedBox(height: 10),
                     ...requests.map((c) => _requestTile(c, isDark, ctrl)),
+                    const SizedBox(height: 18),
+                  ],
+                  if (sentRequests.isNotEmpty) ...[
+                    _sectionHeader("Pending Sent", isDark),
+                    const SizedBox(height: 10),
+                    ...sentRequests.map((c) => _outgoingRequestTile(c, isDark, ctrl)),
                     const SizedBox(height: 18),
                   ],
                   if (added.isNotEmpty) ...[
@@ -262,6 +272,57 @@ class ContactsPage extends StatelessWidget {
                 color: isDark ? Colors.purple[200]! : Colors.purple[700]!,
                 onTap: () {
                   Get.snackbar("Next", "Start call with ${u.fullName}");
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _outgoingRequestTile(
+    ContactModel c,
+    bool isDark,
+    ContactsController ctrl,
+  ) {
+    final u = c.contactUser;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: _tileDecor(isDark),
+      child: ListTile(
+        leading: _avatar(u.profileImage),
+        title: Text(
+          u.fullName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          "Waiting for acceptance",
+          style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
+        ),
+        trailing: SizedBox(
+          width: 90,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Icon(Icons.hourglass_top_rounded, color: Colors.orange[400], size: 18),
+              const SizedBox(width: 8),
+              _smallIcon(
+                icon: Icons.close_rounded,
+                color: Colors.redAccent,
+                onTap: () async {
+                  final ok = await ctrl.cancelRequest(c.id);
+                  _showResultPopup(
+                    title: ok ? "Canceled" : "Failed",
+                    message: ok
+                        ? "Request canceled."
+                        : "Could not cancel request.",
+                  );
                 },
               ),
             ],
