@@ -5,8 +5,13 @@ abstract class Routes {
   static const setupOnSignUp = '/setup-on-sign-up';
   static const settingsAccountInfo = '/settings/account-info';
   static const settingsAppearance = '/settings/appearance';
+  static const settingsDataUsage = '/settings/data-usage';
   static const settingsNotificaions = '/settings/notifications';
   static const settingsSecurity = '/settings/security';
   static const signup = '/signup';
   static const vynxhub = '/vynx-hub';
+
+  static const contacts = '/contacts';
+  static const myQr = '/contacts/my-qr';
+  static const scanQr = '/contacts/scan-qr';
 }

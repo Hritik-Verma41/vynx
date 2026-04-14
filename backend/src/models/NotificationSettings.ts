@@ -17,6 +17,7 @@ const notificationSettingsSchema = new Schema<INotificationSettings>(
         messagePreview: { type: Boolean, default: true },
         sound: { type: Boolean, default: true },
         vibrate: { type: Boolean, default: true },
+        calls: { type: Boolean, default: true }
     },
     { timestamps: true }
 );

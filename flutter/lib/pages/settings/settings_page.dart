@@ -75,7 +75,7 @@ class SettingsPage extends StatelessWidget {
                     Icons.data_usage_outlined,
                     "Data Usage",
                     isDark,
-                    onTap: () {},
+                    onTap: () => Get.toNamed(Routes.settingsDataUsage),
                   ),
                 ], isDark),
                 const SizedBox(height: 40),
@@ -154,7 +154,7 @@ class SettingsPage extends StatelessWidget {
                 ),
               ),
             IconButton(
-              onPressed: () {},
+              onPressed: () => Get.toNamed(Routes.myQr),
               icon: Icon(
                 Icons.qr_code,
                 color: isDark ? Colors.purple[200] : Colors.purple[700],

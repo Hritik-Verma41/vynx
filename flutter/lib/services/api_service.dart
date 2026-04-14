@@ -10,7 +10,7 @@ import 'package:vynx/widgets/vynx_alert_popup.dart';
 
 class ApiService extends GetxService {
   late Dio _dio;
-  Future<bool>? _refreshInFlight;
+  Future<String?>? _refreshInFlight;
   bool _isSessionDialogShowing = false;
 
   Dio get dio => _dio;
@@ -28,7 +28,7 @@ class ApiService extends GetxService {
       BaseOptions(baseUrl: baseUrl, connectTimeout: Duration(seconds: 10)),
     );
 
-    Future<void> handleLogoutConflict() async {
+    Future<void> handleAuthFailure(String reason) async {
       await Get.find<TokenService>().clearTokens();
 
       // If we're already on the login screen, don't force a route reset.
@@ -42,11 +42,14 @@ class ApiService extends GetxService {
       if (_isSessionDialogShowing) return;
       _isSessionDialogShowing = true;
 
+      final bool isConflict = reason == 'conflict';
+
       Get.dialog(
         VynxAlertPopup(
-          title: "Session Conflict",
-          message:
-              "You have been logged in on another device. Please log in again to continue.",
+          title: isConflict ? "Session Conflict" : "Session Expired",
+          message: isConflict
+              ? "You have been logged in on another device. Please log in again to continue."
+              : "Your session expired after inactivity. Please log in again to continue.",
           confirmBtnText: 'Back to Login',
           onConfirm: () {
             if (Get.isDialogOpen ?? false) Get.back();
@@ -59,12 +62,12 @@ class ApiService extends GetxService {
       ).whenComplete(() => _isSessionDialogShowing = false);
     }
 
-    Future<bool> refreshTokens() {
+    Future<String?> refreshTokens() {
       return _refreshInFlight ??= () async {
         try {
           final tokenService = Get.find<TokenService>();
           final refreshToken = await tokenService.getRefreshToken();
-          if (refreshToken == null) return false;
+          if (refreshToken == null) return 'expired';
 
           final refreshDio = Dio(
             BaseOptions(
@@ -72,6 +75,7 @@ class ApiService extends GetxService {
               connectTimeout: _dio.options.connectTimeout,
               receiveTimeout: _dio.options.receiveTimeout,
               sendTimeout: _dio.options.sendTimeout,
+              validateStatus: (_) => true,
             ),
           );
 
@@ -80,7 +84,20 @@ class ApiService extends GetxService {
             data: {'refreshToken': refreshToken},
           );
 
-          if (refreshRes.statusCode != 200) return false;
+          if (refreshRes.statusCode != 200) {
+            final data = refreshRes.data;
+            final String? code = data is Map ? data['code']?.toString() : null;
+
+            if (code == 'SESSION_CONFLICT') return 'conflict';
+            if (code == 'REFRESH_TOKEN_EXPIRED' ||
+                code == 'REFRESH_TOKEN_INVALID') {
+              return 'expired';
+            }
+
+            if (refreshRes.statusCode == 403) return 'conflict';
+            if (refreshRes.statusCode == 401) return 'expired';
+            return 'expired';
+          }
 
           final access = refreshRes.headers
               .value('Authorization')
@@ -88,12 +105,12 @@ class ApiService extends GetxService {
           final refresh = refreshRes.headers.value('x-refresh-token');
           if (access != null && refresh != null) {
             await tokenService.saveTokens(access, refresh);
-            return true;
+            return null;
           }
 
-          return false;
+          return 'expired';
         } catch (_) {
-          return false;
+          return 'expired';
         } finally {
           _refreshInFlight = null;
         }
@@ -126,7 +143,12 @@ class ApiService extends GetxService {
           final int? status = e.response?.statusCode;
 
           if (status == 403) {
-            await handleLogoutConflict();
+            final data = e.response?.data;
+            final String? code = data is Map ? data['code']?.toString() : null;
+
+            if (code == 'SESSION_CONFLICT') {
+              await handleAuthFailure('conflict');
+            }
             return handler.next(e);
           }
 
@@ -147,7 +169,7 @@ class ApiService extends GetxService {
 
           // If refresh itself fails, don't recursively attempt to refresh.
           if (e.requestOptions.path.endsWith(ApiUrls.refreshToken)) {
-            await handleLogoutConflict();
+            await handleAuthFailure('expired');
             return handler.next(e);
           }
 
@@ -156,9 +178,9 @@ class ApiService extends GetxService {
             return handler.next(e);
           }
 
-          final refreshed = await refreshTokens();
-          if (!refreshed) {
-            await handleLogoutConflict();
+          final failureReason = await refreshTokens();
+          if (failureReason != null) {
+            await handleAuthFailure(failureReason);
             return handler.next(e);
           }
 

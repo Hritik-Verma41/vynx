@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:vynx/pages/chats/chats_page.dart';
 import 'package:vynx/pages/settings/settings_page.dart';
 import 'package:vynx/pages/vynx_hub/vynx_hub_contoller.dart';
 
@@ -26,7 +27,7 @@ class VynxHubPage extends StatelessWidget {
           () => IndexedStack(
             index: controller.currentIndex.value,
             children: [
-              _buildPlaceholder("Chats", Icons.chat),
+              const ChatsPage(),
               _buildPlaceholder("Status", Icons.circle_outlined),
               _buildPlaceholder("Calls", Icons.call),
               const SettingsPage(),
