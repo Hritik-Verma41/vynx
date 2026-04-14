@@ -9,10 +9,18 @@ import 'package:vynx/services/api_service.dart';
 
 enum QrAddOutcome { added, alreadyAdded, userNotFound, invalidQr, failed }
 
+enum PhoneAddOutcome { added, alreadyAdded, userNotFound, invalidPhone, failed }
+
 class QrAddResult {
   final QrAddOutcome outcome;
   final String message;
   const QrAddResult(this.outcome, this.message);
+}
+
+class PhoneAddResult {
+  final PhoneAddOutcome outcome;
+  final String message;
+  const PhoneAddResult(this.outcome, this.message);
 }
 
 class ContactsController extends GetxController {
@@ -46,7 +54,7 @@ class ContactsController extends GetxController {
     }
   }
 
-  Future<bool> addByPhone(String phoneNumber) async {
+  Future<PhoneAddResult> addByPhone(String phoneNumber) async {
     try {
       final res = await _dio.post(
         ApiUrls.contactsAddByPhone,
@@ -55,30 +63,43 @@ class ContactsController extends GetxController {
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         await fetchContacts();
-        Get.snackbar(
-          "Success",
-          res.data['message'] ?? "Contact added",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.withValues(alpha: 0.8),
-          colorText: Colors.white,
+        final alreadyExists = res.data['alreadyExists'] == true;
+        final message =
+            res.data['message']?.toString() ??
+            (alreadyExists ? "Already in contacts." : "Contact added.");
+        return PhoneAddResult(
+          alreadyExists ? PhoneAddOutcome.alreadyAdded : PhoneAddOutcome.added,
+          message,
         );
-        return true;
       }
-      return false;
-    } catch (e) {
-      final msg = e is DioException
-          ? (e.response?.data?['message'] ?? "Failed to add contact")
-          : "Failed to add contact";
-      Get.snackbar(
-        "Error",
-        "$msg",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withValues(alpha: 0.1),
-        colorText: Colors.red,
-        margin: const EdgeInsets.all(15),
-        borderRadius: 10,
+
+      return const PhoneAddResult(
+        PhoneAddOutcome.failed,
+        "Failed to add contact.",
       );
-      return false;
+    } catch (e) {
+      if (e is DioException) {
+        final msg =
+            e.response?.data?['message']?.toString() ?? "Failed to add contact";
+        final lc = msg.toLowerCase();
+
+        if (lc.contains('already')) {
+          return PhoneAddResult(PhoneAddOutcome.alreadyAdded, msg);
+        }
+        if (lc.contains('not found')) {
+          return PhoneAddResult(PhoneAddOutcome.userNotFound, msg);
+        }
+        if (lc.contains('invalid') || lc.contains('phone')) {
+          return PhoneAddResult(PhoneAddOutcome.invalidPhone, msg);
+        }
+
+        return PhoneAddResult(PhoneAddOutcome.failed, msg);
+      }
+
+      return const PhoneAddResult(
+        PhoneAddOutcome.failed,
+        "Failed to add contact.",
+      );
     }
   }
 
@@ -138,18 +159,23 @@ class ContactsController extends GetxController {
         final num = user['phoneNumber']?.toString() ?? '';
         if (num.isEmpty) continue;
 
-        final ok = await addByPhone(num);
-        if (ok) added++;
+        final result = await addByPhone(num);
+        if (result.outcome == PhoneAddOutcome.added) {
+          added++;
+        }
       }
 
       await fetchContacts();
-      Get.snackbar(
-        "Sync complete",
-        "Added $added contact(s) from phonebook",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green.withValues(alpha: 0.8),
-        colorText: Colors.white,
-      );
+
+      if (added != 0) {
+        Get.snackbar(
+          "Sync complete",
+          "Added $added contact(s) from phonebook",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green.withValues(alpha: 0.8),
+          colorText: Colors.white,
+        );
+      }
     } catch (e) {
       Get.snackbar(
         "Error",
