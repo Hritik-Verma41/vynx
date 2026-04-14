@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:get/get.dart';
 import 'package:vynx/config/api_urls.dart';
@@ -54,7 +55,13 @@ class ContactsController extends GetxController {
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         await fetchContacts();
-        Get.snackbar("Success", res.data['message'] ?? "Contact added");
+        Get.snackbar(
+          "Success",
+          res.data['message'] ?? "Contact added",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green.withValues(alpha: 0.8),
+          colorText: Colors.white,
+        );
         return true;
       }
       return false;
@@ -62,7 +69,15 @@ class ContactsController extends GetxController {
       final msg = e is DioException
           ? (e.response?.data?['message'] ?? "Failed to add contact")
           : "Failed to add contact";
-      Get.snackbar("Error", "$msg");
+      Get.snackbar(
+        "Error",
+        "$msg",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red,
+        margin: const EdgeInsets.all(15),
+        borderRadius: 10,
+      );
       return false;
     }
   }
@@ -73,7 +88,15 @@ class ContactsController extends GetxController {
 
       final granted = await FlutterContacts.requestPermission(readonly: true);
       if (!granted) {
-        Get.snackbar("Permission", "Contacts permission denied");
+        Get.snackbar(
+          "Permission",
+          "Contacts permission denied",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withValues(alpha: 0.1),
+          colorText: Colors.red,
+          margin: const EdgeInsets.all(15),
+          borderRadius: 10,
+        );
         return;
       }
 
@@ -87,7 +110,13 @@ class ContactsController extends GetxController {
       }
 
       if (phones.isEmpty) {
-        Get.snackbar("Info", "No phone numbers found in contacts");
+        Get.snackbar(
+          "Info",
+          "No phone numbers found in contacts",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.blue.withValues(alpha: 0.8),
+          colorText: Colors.white,
+        );
         return;
       }
 
@@ -114,9 +143,23 @@ class ContactsController extends GetxController {
       }
 
       await fetchContacts();
-      Get.snackbar("Sync complete", "Added $added contact(s) from phonebook");
+      Get.snackbar(
+        "Sync complete",
+        "Added $added contact(s) from phonebook",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green.withValues(alpha: 0.8),
+        colorText: Colors.white,
+      );
     } catch (e) {
-      Get.snackbar("Error", "Phonebook sync failed");
+      Get.snackbar(
+        "Error",
+        "Phonebook sync failed",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red,
+        margin: const EdgeInsets.all(15),
+        borderRadius: 10,
+      );
     } finally {
       isSyncingPhonebook.value = false;
     }
@@ -129,7 +172,15 @@ class ContactsController extends GetxController {
         myQrPayload.value = res.data['qrPayload']?.toString();
       }
     } catch (e) {
-      Get.snackbar("Error", "Unable to load QR");
+      Get.snackbar(
+        "Error",
+        "Unable to load QR",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withValues(alpha: 0.1),
+        colorText: Colors.red,
+        margin: const EdgeInsets.all(15),
+        borderRadius: 10,
+      );
     }
   }
 
