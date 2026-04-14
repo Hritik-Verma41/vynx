@@ -36,6 +36,13 @@ class ChatsPage extends StatelessWidget {
                     color: isDark ? Colors.purple[200] : Colors.purple[700],
                   ),
                 ),
+                IconButton(
+                  onPressed: () => Get.toNamed(Routes.createGroup),
+                  icon: Icon(
+                    Icons.group_add_rounded,
+                    color: isDark ? Colors.purple[200] : Colors.purple[700],
+                  ),
+                ),
               ],
             ),
           ),
@@ -106,12 +113,14 @@ class ChatsPage extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
                   itemBuilder: (_, i) {
                     final c = list[i];
-                    final peer = c.members.firstWhereOrNull(
-                      (m) => m.id != myId,
-                    );
-                    final name = peer?.fullName.isNotEmpty == true
-                        ? peer!.fullName
-                        : "Unknown";
+                    final peer = c.members.firstWhereOrNull((m) => m.id != myId);
+                    final isGroup = c.type == 'group';
+                    final avatarUrl = isGroup ? c.avatar : peer?.profileImage;
+                    final name = isGroup
+                        ? (c.name?.trim().isNotEmpty == true
+                              ? c.name!.trim()
+                              : 'Group')
+                        : (peer?.fullName.isNotEmpty == true ? peer!.fullName : "Unknown");
 
                     return Container(
                       decoration: BoxDecoration(
@@ -127,7 +136,7 @@ class ChatsPage extends StatelessWidget {
                       ),
                       child: ListTile(
                         onTap: () {
-                          Get.snackbar("Next", "Open conversation thread here");
+                          Get.toNamed(Routes.chatThread, arguments: c);
                         },
                         leading: CircleAvatar(
                           radius: 24,
@@ -135,14 +144,14 @@ class ChatsPage extends StatelessWidget {
                             alpha: 0.18,
                           ),
                           backgroundImage:
-                              (peer?.profileImage != null &&
-                                  peer!.profileImage!.isNotEmpty)
-                              ? NetworkImage(peer.profileImage!)
+                              (avatarUrl != null && avatarUrl.isNotEmpty)
+                              ? NetworkImage(avatarUrl)
                               : null,
-                          child:
-                              (peer?.profileImage == null ||
-                                  peer!.profileImage!.isEmpty)
-                              ? const Icon(Icons.person, color: Colors.purple)
+                          child: (avatarUrl == null || avatarUrl.isEmpty)
+                              ? Icon(
+                                  isGroup ? Icons.groups_rounded : Icons.person,
+                                  color: Colors.purple,
+                                )
                               : null,
                         ),
                         title: Text(
@@ -161,8 +170,12 @@ class ChatsPage extends StatelessWidget {
                           ),
                         ),
                         trailing: Icon(
-                          Icons.chevron_right,
-                          color: isDark ? Colors.white38 : Colors.black38,
+                          c.unreadCount > 0
+                              ? Icons.mark_chat_unread_rounded
+                              : Icons.chevron_right,
+                          color: c.unreadCount > 0
+                              ? Colors.greenAccent
+                              : (isDark ? Colors.white38 : Colors.black38),
                         ),
                       ),
                     );

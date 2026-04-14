@@ -55,6 +55,8 @@
 		<string>Vynx needs camera access to let you take images, videos and scan QR codes.</string>
 		<key>NSContactsUsageDescription</key>
 		<string>Contacts access is required to find friends on Vynx.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Vynx needs location access to share your live location in chats.</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>Vynx needs photos access to let you upload a profile picture.</string>
 		<key>NSMicrophoneUsageDescription</key>

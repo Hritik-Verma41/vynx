@@ -92,7 +92,9 @@ class PushNotificationService extends GetxService {
   Future<void> _initializeLocalNotifications() async {
     if (_localInitialized) return;
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/launcher_icons');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/launcher_icons',
+    );
     const darwinSettings = DarwinInitializationSettings();
     const settings = InitializationSettings(
       android: androidSettings,

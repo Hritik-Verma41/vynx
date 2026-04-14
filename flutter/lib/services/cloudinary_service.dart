@@ -10,6 +10,8 @@ class CloudinaryService {
   static const String _uploadPreset = "vynx_app_preset";
   static const String _baseUrl =
       "https://api.cloudinary.com/v1_1/$_cloudName/image/upload";
+  static const String _autoUploadUrl =
+      "https://api.cloudinary.com/v1_1/$_cloudName/auto/upload";
 
   final Dio _cloudinaryDio = Dio();
 
@@ -51,6 +53,28 @@ class CloudinaryService {
       }
     } catch (e) {
       log('Cloudinary Service Error: $e');
+    }
+    return null;
+  }
+
+  Future<Map<String, String>?> uploadAnyFile({required String filePath}) async {
+    try {
+      final formData = FormData.fromMap({
+        'upload_preset': _uploadPreset,
+        'file': await MultipartFile.fromFile(filePath),
+      });
+      final response = await _cloudinaryDio.post(
+        _autoUploadUrl,
+        data: formData,
+      );
+      if (response.statusCode == 200) {
+        return {
+          'url': response.data['secure_url'] as String,
+          'public_id': response.data['public_id'] as String,
+        };
+      }
+    } catch (e) {
+      log('Cloudinary Any Upload Error: $e');
     }
     return null;
   }
