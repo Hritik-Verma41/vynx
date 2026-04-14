@@ -78,7 +78,15 @@ conversationsRouter.post("/with/:otherUserId", protect, async (req: Request, res
         }
 
         const conversation = await getOrCreateDirectConversation(userId, otherUserId);
-        return res.status(200).json({ success: true, conversation });
+        const populated = await Conversation.findById(conversation._id)
+            .populate("members", "firstName lastName profileImage status phoneNumber")
+            .populate("admins", "firstName lastName profileImage");
+
+        return res.status(200).json({
+            success: true,
+            conversation: populated,
+            unreadCount: 0,
+        });
     } catch {
         return res.status(500).json({ success: false, message: "Internal Server Error" });
     }

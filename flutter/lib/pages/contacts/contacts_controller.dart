@@ -466,6 +466,28 @@ class ContactsController extends GetxController {
               'status': other.status,
             },
           ];
+        } else {
+          final members = (raw['members'] as List).map((e) {
+            if (e is Map) return Map<String, dynamic>.from(e);
+            final memberId = e.toString();
+            if (memberId == other.id) {
+              return {
+                '_id': other.id,
+                'firstName': other.firstName,
+                'lastName': other.lastName,
+                'profileImage': other.profileImage,
+                'status': other.status,
+              };
+            }
+            return {
+              '_id': memberId,
+              'firstName': 'User',
+              'lastName': '',
+              'profileImage': null,
+              'status': 'Available',
+            };
+          }).toList();
+          raw['members'] = members;
         }
         return ConversationPreviewModel.fromJson(raw);
       }
